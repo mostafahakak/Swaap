@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# SQLite (local / fallback paths)
+**/data/*.db
+**/data/*.db-*
+
+# Next.js / Firebase hosting cache
+swaap/.next/
+swaap/out/
+swaap/.firebase/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.log

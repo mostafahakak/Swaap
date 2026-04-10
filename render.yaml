@@ -1,0 +1,32 @@
+# Render Blueprint — deploy the API from this monorepo.
+# Repo: https://github.com/mostafahakak/Swaap
+#
+# After first deploy, set secrets in the Render dashboard:
+#   FIREBASE_SERVICE_ACCOUNT (full service account JSON, one line)
+#   CORS_ORIGIN (your production frontend URL(s), comma-separated)
+#
+# If the GitHub repo contains ONLY swaap-backend at its root, remove `rootDir` below
+# and place this file inside that repo root instead.
+
+services:
+  - type: web
+    name: swaap-backend
+    runtime: node
+    region: oregon
+    rootDir: swaap-backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATA_DIR
+        value: /var/data
+      - key: CORS_ORIGIN
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+    disk:
+      name: swaap-sqlite
+      mountPath: /var/data
+      sizeGB: 1
