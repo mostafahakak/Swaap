@@ -4,7 +4,10 @@ node_modules/
 # Env and secrets
 .env
 .env.*
+*firebase-adminsdk*.json
 !.env.example
+!swaap/.env.example
+!swaap/.env.production
 
 # SQLite (local / fallback paths)
 **/data/*.db
