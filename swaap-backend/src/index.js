@@ -21,9 +21,12 @@ const defaultOrigins = [
   "https://www.swaap.it.com",
 ];
 
-const origins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
-  : defaultOrigins;
+/** Merge CORS_ORIGIN (comma-separated) with defaults so production frontends are never dropped by mistake. */
+const fromEnv = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const origins = [...new Set([...defaultOrigins, ...fromEnv])];
 
 app.use(
   cors({
