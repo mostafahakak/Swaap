@@ -1,19 +1,28 @@
 import { Router } from "express";
-import { dummyEvents } from "../data/dummy-events.js";
+import {
+  listEvents,
+  getEventById,
+  getUserById,
+  createEventReservation,
+  getReservationStatus,
+} from "../db.js";
 import { requireAuth } from "../middleware/require-auth.js";
-import { isRegisteredForEvent, registerForEvent, getUserById } from "../db.js";
 import { verifyIdToken } from "../firebase-admin.js";
 
 export const eventsRouter = Router();
 
-function publicEvent(e) {
-  const { longDescription, agenda, coverImage, ...rest } = e;
-  return rest;
+function attachRegistration(e, reservationStatus) {
+  const isRegistered =
+    reservationStatus === "pending_confirmation" || reservationStatus === "confirmed";
+  return {
+    ...e,
+    isRegistered,
+    reservationStatus: reservationStatus ?? null,
+  };
 }
 
 /**
  * GET /api/events
- * Optional: Authorization Bearer — adds isRegistered per event for authenticated users with a profile.
  */
 eventsRouter.get("/", async (req, res, next) => {
   try {
@@ -28,12 +37,9 @@ eventsRouter.get("/", async (req, res, next) => {
       }
     }
 
-    const list = dummyEvents.map((e) => {
-      const base = publicEvent(e);
-      if (uid) {
-        return { ...base, isRegistered: isRegisteredForEvent(uid, e.id) };
-      }
-      return base;
+    const list = listEvents().map((e) => {
+      const st = uid ? getReservationStatus(uid, e.id) : null;
+      return attachRegistration(e, st);
     });
 
     return res.json({ events: list });
@@ -44,53 +50,65 @@ eventsRouter.get("/", async (req, res, next) => {
 
 /**
  * GET /api/events/:id
- * Full detail for an event. Optional Bearer adds isRegistered.
  */
 eventsRouter.get("/:id", async (req, res, next) => {
   try {
-    const event = dummyEvents.find((e) => e.id === req.params.id);
+    const event = getEventById(req.params.id);
     if (!event) {
       return res.status(404).json({ error: "Event not found" });
     }
 
-    let isRegistered = false;
+    let uid = null;
     const header = req.headers.authorization;
     if (header?.startsWith("Bearer ")) {
       try {
         const decoded = await verifyIdToken(header.slice(7));
-        if (getUserById(decoded.uid)) {
-          isRegistered = isRegisteredForEvent(decoded.uid, event.id);
-        }
+        if (getUserById(decoded.uid)) uid = decoded.uid;
       } catch {
         /* optional */
       }
     }
 
-    return res.json({ event: { ...event, isRegistered } });
+    const st = uid ? getReservationStatus(uid, event.id) : null;
+    return res.json({ event: attachRegistration(event, st) });
   } catch (e) {
     next(e);
   }
 });
 
 /**
- * POST /api/events/:id/register
- * Authorization: Bearer <Firebase ID token>
- * Requires an existing user profile in the database.
+ * POST /api/events/:id/reserve
  */
-eventsRouter.post("/:id/register", requireAuth, (req, res) => {
-  const event = dummyEvents.find((e) => e.id === req.params.id);
+eventsRouter.post("/:id/reserve", requireAuth, (req, res) => {
+  const event = getEventById(req.params.id);
   if (!event) {
     return res.status(404).json({ error: "Event not found" });
   }
 
-  if (!getUserById(req.user.uid)) {
-    return res.status(403).json({ error: "Complete your profile before registering" });
+  const profile = getUserById(req.user.uid);
+  if (!profile) {
+    return res.status(403).json({ error: "Complete your profile before reserving" });
   }
 
-  registerForEvent(req.user.uid, event.id);
+  try {
+    createEventReservation({
+      userId: req.user.uid,
+      eventId: event.id,
+      name: profile.name,
+      phone: profile.phone || req.user.phone || "",
+      email: profile.email,
+    });
+  } catch (e) {
+    if (e.code === "ALREADY_RESERVED") {
+      return res.status(409).json({ error: "You already submitted a request for this event" });
+    }
+    throw e;
+  }
+
   return res.status(201).json({
     ok: true,
     eventId: event.id,
-    message: "Registered successfully",
+    status: "pending_confirmation",
+    message: "Reservation request submitted",
   });
 });
