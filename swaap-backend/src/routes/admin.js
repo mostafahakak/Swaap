@@ -8,6 +8,7 @@ import {
   listAllUsers,
   getEventById,
 } from "../db.js";
+import { SWAAP_STREAMS } from "../data/dummy-events.js";
 
 export const adminRouter = Router();
 
@@ -34,6 +35,10 @@ adminRouter.post("/events", (req, res) => {
   }
 
   const id = `evt-${crypto.randomUUID()}`;
+  const streamRaw = b.swaapStream != null ? String(b.swaapStream).trim() : "Swaap Connect";
+  const swaap_stream = SWAAP_STREAMS.includes(streamRaw) ? streamRaw : "Swaap Connect";
+  const host_user_id = b.hostUserId != null ? String(b.hostUserId).trim() : "";
+
   const row = {
     id,
     title,
@@ -52,6 +57,8 @@ adminRouter.post("/events", (req, res) => {
       b.longDescription != null ? String(b.longDescription).trim() : String(b.description || "").trim(),
     agenda_json: JSON.stringify(Array.isArray(b.agenda) ? b.agenda : []),
     attendees_hint: b.attendeesHint != null ? Number(b.attendeesHint) : 0,
+    swaap_stream,
+    host_user_id,
   };
 
   if (!row.start_date || !row.start_time || !row.end_date || !row.end_time) {

@@ -11,15 +11,16 @@ const nav = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Swap" },
   { href: "/events", label: "Events" },
-  { href: "/discover", label: "Discover" },
+  { href: "/explore", label: "Explore" },
   { href: "/contact", label: "Contact us" },
+  { href: "/admin", label: "Admin", adminOnly: true },
 ];
 
 export function Header() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { firebaseUser, userExists, loading, signOut } = useAuth();
+  const { firebaseUser, userExists, loading, signOut, isAdmin } = useAuth();
 
   const isAuthed = Boolean(firebaseUser);
   const needsOnboarding = isAuthed && !userExists;
@@ -59,24 +60,26 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-[color-mix(in_srgb,var(--swaap-primary)_14%,white)] bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo variant="navbar" />
 
         <nav className="hidden items-center gap-1 md:flex">
-          {nav.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                pathname === href
-                  ? "bg-violet-100/80 text-violet-950"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
+          {nav
+            .filter((item) => !item.adminOnly || isAdmin)
+            .map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pathname === href
+                    ? "bg-[color-mix(in_srgb,var(--swaap-primary)_14%,white)] text-[var(--swaap-primary)]"
+                    : "text-neutral-600 hover:bg-neutral-50 hover:text-[var(--swaap-ink)]"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -88,7 +91,7 @@ export function Header() {
                 {needsOnboarding ? (
                   <Link
                     href="/onboarding/enter-info"
-                    className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-900 transition-colors hover:bg-violet-100"
+                    className="rounded-lg border border-[color-mix(in_srgb,var(--swaap-primary)_25%,white)] bg-[color-mix(in_srgb,var(--swaap-sky)_18%,white)] px-4 py-2 text-sm font-semibold text-[var(--swaap-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--swaap-sky)_28%,white)]"
                   >
                     Complete profile
                   </Link>
@@ -103,7 +106,7 @@ export function Header() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+                  className="rounded-lg bg-[var(--swaap-primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-95"
                 >
                   Log out
                 </button>
@@ -118,7 +121,7 @@ export function Header() {
                 </Link>
                 <Link
                   href="/login"
-                  className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-105"
+                  className="rounded-lg bg-[var(--swaap-accent)] px-4 py-2 text-sm font-semibold text-[var(--swaap-ink)] shadow-sm transition hover:brightness-105"
                 >
                   Sign up
                 </Link>
@@ -163,7 +166,7 @@ export function Header() {
               }`}
             >
               <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
-                <span className="font-semibold text-black">Menu</span>
+                <span className="font-semibold text-[var(--swaap-ink)]">Menu</span>
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
@@ -176,20 +179,22 @@ export function Header() {
                 </button>
               </div>
               <nav className="flex flex-col gap-1 pt-4">
-                {nav.map(({ href, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setDrawerOpen(false)}
-                    className={`rounded-lg px-4 py-3 text-base font-medium transition-colors ${
-                      pathname === href
-                        ? "bg-violet-50 text-violet-900"
-                        : "text-neutral-700 hover:bg-neutral-50"
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                ))}
+                {nav
+                  .filter((item) => !item.adminOnly || isAdmin)
+                  .map(({ href, label }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setDrawerOpen(false)}
+                      className={`rounded-lg px-4 py-3 text-base font-medium transition-colors ${
+                        pathname === href
+                          ? "bg-[color-mix(in_srgb,var(--swaap-primary)_12%,white)] text-[var(--swaap-primary)]"
+                          : "text-neutral-700 hover:bg-neutral-50"
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  ))}
               </nav>
               <div className="mt-auto flex flex-col gap-2 border-t border-neutral-200 pt-4">
                 {loading ? null : isAuthed ? (
@@ -198,7 +203,7 @@ export function Header() {
                       <Link
                         href="/onboarding/enter-info"
                         onClick={() => setDrawerOpen(false)}
-                        className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-center text-sm font-medium text-violet-900"
+                        className="rounded-lg border border-[color-mix(in_srgb,var(--swaap-primary)_22%,white)] bg-[color-mix(in_srgb,var(--swaap-sky)_16%,white)] px-4 py-3 text-center text-sm font-semibold text-[var(--swaap-primary)]"
                       >
                         Complete profile
                       </Link>
@@ -214,7 +219,7 @@ export function Header() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="rounded-lg bg-zinc-900 px-4 py-3 text-center text-sm font-medium text-white hover:bg-zinc-800"
+                      className="rounded-lg bg-[var(--swaap-primary)] px-4 py-3 text-center text-sm font-semibold text-white hover:opacity-95"
                     >
                       Log out
                     </button>
@@ -231,7 +236,7 @@ export function Header() {
                     <Link
                       href="/login"
                       onClick={() => setDrawerOpen(false)}
-                      className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-3 text-center text-sm font-medium text-white"
+                      className="rounded-lg bg-[var(--swaap-accent)] px-4 py-3 text-center text-sm font-semibold text-[var(--swaap-ink)]"
                     >
                       Sign up
                     </Link>

@@ -1,28 +1,34 @@
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Outfit, Syne } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Providers } from "@/components/Providers";
-// FirebaseAnalytics disabled until firebase is installed. Run: npm install. Then add: import { FirebaseAnalytics } from "@/components/FirebaseAnalytics"; and <FirebaseAnalytics /> after <Header />.
 
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
+const syne = Syne({
+  variable: "--font-syne",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 export const metadata = {
-  title: "SWAAP — Connect. Collaborate. Create Value.",
+  title: "SWAAP — Create. Connect. Collaborate.",
   description:
-    "Professional networking and AI matchmaking. Swap expertise, discover events, and connect with like-minded professionals.",
+    "Professional networking and meetups. Create value, connect with the right people, collaborate at SWAAP events.",
   icons: {
-    icon: "/Logo.png",
+    icon: "/Logo/logo_blue.png",
+    apple: "/Logo/logo_blue.png",
   },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${plusJakarta.variable} antialiased font-sans`}>
+      <body className={`${outfit.variable} ${syne.variable} antialiased font-sans`}>
         <Providers>
           <Header />
           <main className="min-h-[calc(100vh-8rem)]">{children}</main>

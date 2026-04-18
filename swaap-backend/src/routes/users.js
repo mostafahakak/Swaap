@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { createUser, getUserById, updateUserProfile, listReservationsForUser } from "../db.js";
+import {
+  createUser,
+  getUserById,
+  updateUserProfile,
+  listReservationsForUser,
+  listPublicProfiles,
+  getPublicProfileById,
+} from "../db.js";
 import { requireAuth } from "../middleware/require-auth.js";
 import { ALLOWED_INTERESTS } from "../data/dummy-events.js";
 
@@ -19,6 +26,20 @@ usersRouter.get("/me/event-reservations", requireAuth, (req, res) => {
     return res.status(404).json({ error: "Profile not found" });
   }
   return res.json({ reservations: listReservationsForUser(req.user.uid) });
+});
+
+/** Public member directory for Explore (no email / phone). */
+usersRouter.get("/directory", (_req, res) => {
+  return res.json({ users: listPublicProfiles() });
+});
+
+/** Public profile by Firebase uid (for shared profile links). */
+usersRouter.get("/:userId/public", (req, res) => {
+  const profile = getPublicProfileById(req.params.userId);
+  if (!profile) {
+    return res.status(404).json({ error: "Profile not found" });
+  }
+  return res.json({ profile });
 });
 
 /**

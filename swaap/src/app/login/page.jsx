@@ -98,7 +98,14 @@ export default function LoginPage() {
       if (!v.userExists) router.replace("/onboarding/enter-info");
       else router.replace("/");
     } catch (err) {
-      setError(err.message || "Invalid code");
+      const msg = err.message || "Invalid code";
+      if (msg === "Failed to fetch" || msg.includes("NetworkError")) {
+        setError(
+          "Could not reach the API (network/CORS). On Render, set CORS_ORIGIN to include https://swaap.it.com and redeploy the backend. Ensure NEXT_PUBLIC_API_URL points to your API (e.g. https://swaap.onrender.com) with no trailing slash."
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
     }
@@ -107,12 +114,17 @@ export default function LoginPage() {
   return (
     <div className="relative mx-auto flex min-h-[calc(100vh-8rem)] max-w-md flex-col justify-center px-4 py-12">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="animate-orb absolute -left-20 top-10 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" />
-        <div className="animate-orb-delayed absolute -right-16 bottom-20 h-72 w-72 rounded-full bg-cyan-500/15 blur-3xl" />
+        <div className="animate-orb absolute -left-20 top-10 h-64 w-64 rounded-full bg-[color-mix(in_srgb,var(--swaap-primary)_28%,transparent)] blur-3xl" />
+        <div className="animate-orb-delayed absolute -right-16 bottom-20 h-72 w-72 rounded-full bg-[color-mix(in_srgb,var(--swaap-sky)_35%,transparent)] blur-3xl" />
       </div>
 
       <Logo variant="compact" className="mb-8 inline-flex" />
-      <h1 className="text-2xl font-semibold tracking-tight text-black">Sign in with phone</h1>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--swaap-primary)]">
+        Create · Connect · Collaborate
+      </p>
+      <h1 className="font-display mt-3 text-2xl font-bold tracking-tight text-[var(--swaap-ink)]">
+        Sign in with phone
+      </h1>
       <p className="mt-2 text-neutral-600">
         {step === "phone"
           ? "Enter your mobile number in international format. We’ll text you a one-time code."
@@ -145,7 +157,7 @@ export default function LoginPage() {
               autoComplete="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-black shadow-sm transition-shadow focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-black shadow-sm transition-shadow focus:border-[var(--swaap-primary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--swaap-primary)_22%,transparent)]"
               placeholder="+44 7911 123456"
               required
             />
@@ -155,7 +167,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-base font-medium text-white shadow-lg shadow-violet-500/25 transition hover:brightness-105 disabled:opacity-60"
+            className="w-full rounded-xl bg-[var(--swaap-primary)] py-3 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-60"
           >
             {busy ? "Sending…" : "Send code"}
           </button>
@@ -172,7 +184,7 @@ export default function LoginPage() {
               inputMode="numeric"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 font-mono text-lg tracking-[0.35em] text-black shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 font-mono text-lg tracking-[0.35em] text-black shadow-sm focus:border-[var(--swaap-primary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--swaap-primary)_22%,transparent)]"
               placeholder="••••••"
               maxLength={6}
               required
@@ -182,7 +194,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-base font-medium text-white shadow-lg shadow-violet-500/25 transition hover:brightness-105 disabled:opacity-60"
+            className="w-full rounded-xl bg-[var(--swaap-primary)] py-3 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-60"
           >
             {busy ? "Verifying…" : "Verify & continue"}
           </button>
@@ -202,7 +214,7 @@ export default function LoginPage() {
 
       <p className="mt-8 text-center text-sm text-neutral-500">
         New to SWAAP? Phone sign-in creates your account—then we’ll save your profile if the API is configured.{" "}
-        <Link href="/about" className="font-medium text-violet-700 hover:underline">
+        <Link href="/about" className="font-medium text-[var(--swaap-primary)] hover:underline">
           About the platform
         </Link>
       </p>

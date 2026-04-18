@@ -21,10 +21,10 @@ export default function AboutPage() {
       </p>
       <div className="mt-10">
         <Link
-          href="/discover"
+          href="/explore"
           className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
         >
-          Discover professionals
+          Explore professionals
         </Link>
       </div>
     </div>

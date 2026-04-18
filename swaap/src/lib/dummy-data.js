@@ -17,6 +17,7 @@ export const connectionTypes = [
 export const dummyEvents = [
   {
     id: "evt-1",
+    swaapStream: "Swaap Connect",
     title: "SWAAP Tech & Marketing Exchange",
     description: "Quarterly meetup for tech and marketing professionals to swap expertise. Bring your skills, leave with new connections.",
     date: "2025-02-15",
@@ -29,6 +30,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-2",
+    swaapStream: "Swaap Grow",
     title: "AI in Business Networking",
     description: "Explore how AI-driven matchmaking is transforming professional connections. Workshops and networking.",
     date: "2025-02-20",
@@ -41,6 +43,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-3",
+    swaapStream: "Swaap Business",
     title: "Design × Dev Swap Lounge",
     description: "Designers and developers exchange services. Need a logo? Swap with code. Need a landing page? Swap with branding.",
     date: "2025-02-28",
@@ -53,6 +56,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-4",
+    swaapStream: "Swaap Connect",
     title: "Startup Founders Knowledge Swap",
     description: "Founders share lessons on growth, fundraising, and ops. One-on-one swap sessions included.",
     date: "2025-03-05",
@@ -65,6 +69,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-5",
+    swaapStream: "Swaap Grow",
     title: "Marketing for Developers",
     description: "Devs learn basic marketing; marketers learn basic dev. Structured swap workshops.",
     date: "2025-03-12",

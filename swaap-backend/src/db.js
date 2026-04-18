@@ -100,6 +100,19 @@ for (const sql of alters) {
   }
 }
 
+const eventColumnAlters = [
+  "ALTER TABLE events ADD COLUMN swaap_stream TEXT NOT NULL DEFAULT 'Swaap Connect'",
+  "ALTER TABLE events ADD COLUMN host_user_id TEXT NOT NULL DEFAULT ''",
+];
+for (const sql of eventColumnAlters) {
+  try {
+    db.exec(sql);
+  } catch (e) {
+    const msg = String(e?.message || e);
+    if (!msg.includes("duplicate column")) throw e;
+  }
+}
+
 function mapUser(row) {
   if (!row) return null;
   return {
@@ -155,6 +168,8 @@ function mapEventRow(row, { includeDetail = false } = {}) {
     date: row.start_date,
     time: row.start_time,
     industry: row.category,
+    swaapStream: row.swaap_stream ?? "Swaap Connect",
+    hostUserId: (row.host_user_id && String(row.host_user_id).trim()) || null,
   };
   if (includeDetail) {
     return {
@@ -169,6 +184,43 @@ function mapEventRow(row, { includeDetail = false } = {}) {
 export function getUserById(id) {
   const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
   return row ? mapUser(row) : null;
+}
+
+function mapPublicUser(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    interest: row.interest,
+    professionArea: row.profession_area ?? "",
+    title: row.title ?? "",
+    linkedinUrl: row.linkedin_url ?? "",
+    jobRole: row.job_role ?? "",
+    companyName: row.company_name ?? "",
+    industry: row.industry ?? "",
+    lookingFor: row.looking_for ?? "",
+    canOffer: row.can_offer ?? "",
+    businessOwner: Boolean(row.business_owner),
+    businessWebsite: row.business_website ?? "",
+    socialInstagram: row.social_instagram ?? "",
+    socialFacebook: row.social_facebook ?? "",
+    socialLinkedin: row.social_linkedin ?? "",
+    socialSnapchat: row.social_snapchat ?? "",
+    socialTiktok: row.social_tiktok ?? "",
+  };
+}
+
+/** Directory + public profile (no phone, email, or admin flags). */
+export function getPublicProfileById(id) {
+  const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+  return row ? mapPublicUser(row) : null;
+}
+
+export function listPublicProfiles() {
+  const rows = db
+    .prepare("SELECT * FROM users ORDER BY datetime(created_at) DESC")
+    .all();
+  return rows.map((r) => mapPublicUser(r));
 }
 
 /** Admin role is never chosen by the client—only if phone matches ADMIN_PHONES (E.164). */
@@ -291,11 +343,11 @@ export function createEvent(row) {
     INSERT INTO events (
       id, title, description, image, type, category,
       start_date, start_time, end_date, end_time, status, price, location,
-      long_description, agenda_json, attendees_hint
+      long_description, agenda_json, attendees_hint, swaap_stream, host_user_id
     ) VALUES (
       @id, @title, @description, @image, @type, @category,
       @start_date, @start_time, @end_date, @end_time, @status, @price, @location,
-      @long_description, @agenda_json, @attendees_hint
+      @long_description, @agenda_json, @attendees_hint, @swaap_stream, @host_user_id
     )
   `);
   stmt.run(row);
@@ -388,11 +440,11 @@ export function seedEventsIfEmpty() {
     INSERT INTO events (
       id, title, description, image, type, category,
       start_date, start_time, end_date, end_time, status, price, location,
-      long_description, agenda_json, attendees_hint
+      long_description, agenda_json, attendees_hint, swaap_stream, host_user_id
     ) VALUES (
       @id, @title, @description, @image, @type, @category,
       @start_date, @start_time, @end_date, @end_time, @status, @price, @location,
-      @long_description, @agenda_json, @attendees_hint
+      @long_description, @agenda_json, @attendees_hint, @swaap_stream, @host_user_id
     )
   `);
   for (const e of dummyEvents) {
@@ -413,6 +465,8 @@ export function seedEventsIfEmpty() {
       long_description: e.longDescription ?? e.description,
       agenda_json: JSON.stringify(e.agenda ?? []),
       attendees_hint: e.attendees ?? 0,
+      swaap_stream: e.swaapStream ?? "Swaap Connect",
+      host_user_id: e.hostUserId != null ? String(e.hostUserId).trim() : "",
     });
   }
 }

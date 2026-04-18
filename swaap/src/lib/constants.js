@@ -1,12 +1,25 @@
 /** Match backend `ALLOWED_INTERESTS` in swaap-backend/src/data/dummy-events.js */
 export const INTEREST_OPTIONS = [
-  "Connect with people",
-  "Hire someone",
-  "Seeking job",
-  "Find collaborators / partners",
-  "Offer or find mentorship",
-  "Explore new opportunities",
+  "Startups",
+  "Business Growth",
+  "Fundraising",
+  "Marketing",
+  "Strategy",
+  "Sales",
+  "Innovation",
+  "AI in Business",
+  "Digital Transformation",
+  "Emerging Technologies",
+  "Public Speaking",
+  "Networking",
+  "Mentorship",
+  "Leadership Development",
+  "Partnerships",
+  "Collaboration",
 ];
+
+/** Match backend `SWAAP_STREAMS` in swaap-backend/src/data/dummy-events.js */
+export const SWAAP_STREAMS = ["Swaap Connect", "Swaap Grow", "Swaap Business"];
 
 /** Match signup / onboarding — how users found SWAAP */
 export const HEAR_ABOUT_OPTIONS = [

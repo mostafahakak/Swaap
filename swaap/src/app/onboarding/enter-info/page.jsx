@@ -8,6 +8,9 @@ import { useAuth } from "@/context/AuthContext";
 import { apiCreateProfile } from "@/lib/api";
 import { HEAR_ABOUT_OPTIONS, HEAR_ABOUT_OTHER, INTEREST_OPTIONS } from "@/lib/constants";
 
+const inputCls =
+  "mt-1.5 w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-[var(--swaap-ink)] focus:border-[var(--swaap-primary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--swaap-primary)_22%,transparent)]";
+
 export default function EnterInfoPage() {
   const router = useRouter();
   const { firebaseUser, userExists, loading, refreshSession, getIdToken, apiConfigured } = useAuth();
@@ -77,18 +80,20 @@ export default function EnterInfoPage() {
   return (
     <div className="relative mx-auto max-w-lg px-4 py-12 sm:px-6">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="animate-orb absolute left-1/4 top-0 h-56 w-56 -translate-x-1/2 rounded-full bg-fuchsia-500/15 blur-3xl" />
+        <div className="animate-orb absolute left-1/4 top-0 h-56 w-56 -translate-x-1/2 rounded-full bg-[color-mix(in_srgb,var(--swaap-sky)_45%,transparent)] blur-3xl" />
       </div>
 
       <Logo variant="compact" className="mb-8" />
-      <h1 className="text-2xl font-semibold tracking-tight text-black">Complete your signup</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--swaap-ink)]">
+        Complete your signup
+      </h1>
       <p className="mt-2 text-neutral-600">
         A few details so we can tailor events and introductions on SWAAP.
       </p>
 
       <form
         onSubmit={submit}
-        className="mt-10 space-y-5 rounded-2xl border border-neutral-200/80 bg-white/80 p-6 shadow-xl shadow-violet-500/5 backdrop-blur-sm animate-fade-up"
+        className="mt-10 space-y-5 rounded-2xl border border-[color-mix(in_srgb,var(--swaap-primary)_12%,white)] bg-white/90 p-6 shadow-lg shadow-[color-mix(in_srgb,var(--swaap-primary)_12%,transparent)] backdrop-blur-sm animate-fade-up"
       >
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-neutral-700">
@@ -98,7 +103,7 @@ export default function EnterInfoPage() {
             id="name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="mt-1.5 w-full rounded-xl border border-neutral-200 px-4 py-2.5 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            className={inputCls}
             required
             autoComplete="name"
           />
@@ -112,7 +117,7 @@ export default function EnterInfoPage() {
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="mt-1.5 w-full rounded-xl border border-neutral-200 px-4 py-2.5 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            className={inputCls}
             required
             autoComplete="email"
           />
@@ -125,7 +130,7 @@ export default function EnterInfoPage() {
             id="interest"
             value={form.interest}
             onChange={(e) => setForm({ ...form, interest: e.target.value })}
-            className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            className={`${inputCls} bg-white`}
           >
             {INTEREST_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -142,7 +147,7 @@ export default function EnterInfoPage() {
             id="hearAbout"
             value={form.hearAbout}
             onChange={(e) => setForm({ ...form, hearAbout: e.target.value })}
-            className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            className={`${inputCls} bg-white`}
           >
             {HEAR_ABOUT_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -156,7 +161,7 @@ export default function EnterInfoPage() {
               value={form.hearAboutOther}
               onChange={(e) => setForm({ ...form, hearAboutOther: e.target.value })}
               placeholder="Tell us more…"
-              className="mt-3 w-full rounded-xl border border-neutral-200 px-4 py-2.5 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              className={`${inputCls} mt-3`}
               aria-label="How did you hear about SWAAP — details"
             />
           ) : null}
@@ -165,14 +170,14 @@ export default function EnterInfoPage() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 font-medium text-white shadow-lg shadow-violet-500/25 transition hover:brightness-105 disabled:opacity-60"
+          className="w-full rounded-xl bg-[var(--swaap-primary)] py-3 font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-60"
         >
           {busy ? "Saving…" : "Submit & go to home"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-neutral-500">
-        <Link href="/" className="text-violet-700 hover:underline">
+        <Link href="/" className="font-medium text-[var(--swaap-primary)] hover:underline">
           Back to home
         </Link>
       </p>

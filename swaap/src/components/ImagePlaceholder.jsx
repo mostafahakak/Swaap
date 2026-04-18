@@ -1,12 +1,16 @@
 "use client";
 
-export function ImagePlaceholder({ className = "", label, gradient = "violet" }) {
+export function ImagePlaceholder({ className = "", label, gradient = "swaap" }) {
   const gradients = {
+    swaap:
+      "from-[color-mix(in_srgb,#334FA0_55%,transparent)] via-[color-mix(in_srgb,#9AD2EA_40%,transparent)] to-[color-mix(in_srgb,#F2E955_35%,transparent)]",
+    lime:
+      "from-[color-mix(in_srgb,#B6CF60_50%,transparent)] via-[color-mix(in_srgb,#5660A5_35%,transparent)] to-[color-mix(in_srgb,#334FA0_30%,transparent)]",
     violet: "from-violet-600/30 via-fuchsia-500/20 to-cyan-500/25",
     slate: "from-slate-700/40 via-slate-600/20 to-zinc-500/25",
     warm: "from-amber-500/25 via-orange-500/15 to-rose-500/20",
   };
-  const g = gradients[gradient] || gradients.violet;
+  const g = gradients[gradient] || gradients.swaap;
 
   return (
     <div
@@ -21,7 +25,7 @@ export function ImagePlaceholder({ className = "", label, gradient = "violet" })
         }}
       />
       {label ? (
-        <span className="absolute bottom-3 left-3 right-3 text-xs font-medium tracking-wide text-white/80 drop-shadow-sm">
+        <span className="absolute bottom-3 left-3 right-3 text-xs font-medium tracking-wide text-white/90 drop-shadow-sm">
           {label}
         </span>
       ) : null}

@@ -1,7 +1,11 @@
+/** Swaap programme streams — used for filtering and event labels */
+export const SWAAP_STREAMS = ["Swaap Connect", "Swaap Grow", "Swaap Business"];
+
 /** Dummy events served by GET /api/events and GET /api/events/:id */
 export const dummyEvents = [
   {
     id: "evt-1",
+    swaapStream: "Swaap Connect",
     title: "SWAAP Tech & Marketing Exchange",
     description:
       "Quarterly meetup for tech and marketing professionals to swap expertise. Bring your skills, leave with new connections.",
@@ -19,6 +23,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-2",
+    swaapStream: "Swaap Grow",
     title: "AI in Business Networking",
     description:
       "Explore how AI-driven matchmaking is transforming professional connections. Workshops and networking.",
@@ -36,6 +41,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-3",
+    swaapStream: "Swaap Business",
     title: "Design × Dev Swap Lounge",
     description:
       "Designers and developers exchange services. Need a logo? Swap with code. Need a landing page? Swap with branding.",
@@ -53,6 +59,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-4",
+    swaapStream: "Swaap Connect",
     title: "Startup Founders Knowledge Swap",
     description:
       "Founders share lessons on growth, fundraising, and ops. One-on-one swap sessions included.",
@@ -70,6 +77,7 @@ export const dummyEvents = [
   },
   {
     id: "evt-5",
+    swaapStream: "Swaap Grow",
     title: "Marketing for Developers",
     description:
       "Devs learn basic marketing; marketers learn basic dev. Structured swap workshops.",
@@ -88,10 +96,20 @@ export const dummyEvents = [
 ];
 
 export const ALLOWED_INTERESTS = [
-  "Connect with people",
-  "Hire someone",
-  "Seeking job",
-  "Find collaborators / partners",
-  "Offer or find mentorship",
-  "Explore new opportunities",
+  "Startups",
+  "Business Growth",
+  "Fundraising",
+  "Marketing",
+  "Strategy",
+  "Sales",
+  "Innovation",
+  "AI in Business",
+  "Digital Transformation",
+  "Emerging Technologies",
+  "Public Speaking",
+  "Networking",
+  "Mentorship",
+  "Leadership Development",
+  "Partnerships",
+  "Collaboration",
 ];

@@ -7,35 +7,52 @@ import { ImagePlaceholder } from "@/components/ImagePlaceholder";
 import { apiGetEvents } from "@/lib/api";
 import { dummyEvents } from "@/lib/dummy-data";
 import { useAuth } from "@/context/AuthContext";
+import { displayEventMeta, isRemoteImage } from "@/lib/event-display";
 
 function NextEventCard({ e, delay }) {
-  const priceLabel = e.price === 0 ? "Free" : `£${e.price}`;
+  const m = displayEventMeta(e);
+  const priceLabel = m.price === 0 ? "Free" : `£${m.price}`;
   return (
     <Link
-      href={`/events/${e.id}`}
-      className="group block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-500/10 animate-fade-up"
+      href={`/events/${m.id}`}
+      className="group card-lift block overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--swaap-primary)_14%,white)] bg-white shadow-sm animate-fade-up"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="overflow-hidden">
-        <ImagePlaceholder
-          className="aspect-[16/10] w-full transition-transform duration-500 group-hover:scale-[1.02]"
-          gradient="warm"
-          label="Event cover — replace with photo"
-        />
+        {isRemoteImage(m.image) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={m.image}
+            alt=""
+            className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          />
+        ) : (
+          <ImagePlaceholder
+            className="aspect-[16/10] w-full transition-transform duration-500 group-hover:scale-[1.02]"
+            gradient="swaap"
+            label="Event cover"
+          />
+        )}
       </div>
       <div className="p-5">
-        <span className="text-xs font-medium uppercase tracking-wider text-violet-600">{e.type}</span>
-        <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-black group-hover:text-violet-700">{e.title}</h3>
-        <p className="mt-2 text-sm text-neutral-500">
-          {e.date} · {e.time} · {e.location}
+        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--swaap-primary)]">
+          {m.type}
+        </span>
+        <h3 className="font-display mt-2 line-clamp-2 text-lg font-semibold text-[var(--swaap-ink)] group-hover:text-[var(--swaap-primary)]">
+          {m.title}
+        </h3>
+        <p className="mt-2 text-sm text-neutral-600">
+          {m.date} · {m.time} · {m.location}
         </p>
-        <span className="mt-3 inline-block rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-700">
+        <span className="mt-3 inline-block rounded-full bg-[color-mix(in_srgb,var(--swaap-accent)_55%,white)] px-2.5 py-1 text-xs font-semibold text-[var(--swaap-ink)]">
           {priceLabel}
         </span>
       </div>
     </Link>
   );
 }
+
+const KEYWORDS = ["Create", "Connect", "Collaborate"];
 
 export default function HomePageClient() {
   const { getIdToken, firebaseUser } = useAuth();
@@ -62,100 +79,110 @@ export default function HomePageClient() {
     {
       step: "1",
       title: "Create your profile",
-      desc: "Phone-verified identity, your goals, and what you offer—so every introduction counts.",
+      desc: "Phone-verified identity and your goals—so every introduction is intentional.",
     },
     {
       step: "2",
-      title: "Discover events",
-      desc: "Meetups, swaps, and hybrid sessions matched to your industry and intent.",
+      title: "Connect at events",
+      desc: "In-person, online, and hybrid sessions aligned with your industry and intent.",
     },
     {
       step: "3",
-      title: "Swap & connect",
-      desc: "Trade expertise, hire, collaborate, or find your next role—face to face or online.",
+      title: "Collaborate & swap value",
+      desc: "Trade expertise, hire, find roles, or build partnerships that last.",
     },
-  ];
-
-  const pillars = [
-    { title: "Verified profiles", desc: "Phone sign-in and rich profiles build trust fast." },
-    { title: "Curated events", desc: "Dummy schedules for now—swap in your real calendar later." },
-    { title: "Purpose-driven matching", desc: "Interests like hiring, job seeking, and collaboration." },
-    { title: "Professional layer", desc: "Titles, industries, and LinkedIn—built for serious meetups." },
   ];
 
   return (
     <div className="overflow-hidden">
-      <section className="relative border-b border-white/10 bg-zinc-950 text-white">
+      {/* Hero — primary palette + guide line */}
+      <section className="relative overflow-hidden border-b border-white/10 text-white" style={{ background: "var(--swaap-hero-gradient)" }}>
         <div className="pointer-events-none absolute inset-0">
-          <div className="animate-mesh absolute inset-0 opacity-90" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(139,92,246,0.35),transparent)]" />
+          <div className="animate-mesh absolute inset-0 opacity-95" />
+          <div className="hero-mesh absolute inset-0 opacity-80" />
         </div>
         <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-          <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-10">
+          <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-12">
             <div className="animate-fade-up">
-              <Logo variant="full" className="mb-8 [&_img]:brightness-0 [&_img]:invert" />
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-violet-300/90">
-                Professional meetups · Smart intros · Knowledge swap
+              <Logo variant="full" tone="dark" className="mb-8" />
+              <p className="font-display text-sm font-semibold uppercase tracking-[0.25em] text-[var(--swaap-sky)]">
+                {KEYWORDS.join(" · ")}
               </p>
-              <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
+              <h1 className="font-display mt-5 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-[3.35rem]">
                 Meet the right people.
-                <span className="block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">
-                  Swap value, not just cards.
-                </span>
+                <span className="mt-2 block text-[var(--swaap-accent)]">Swap value, not just cards.</span>
               </h1>
-              <p className="mt-6 max-w-xl text-lg text-zinc-400">
-                SWAAP is a professional meetup platform: verify with your phone, say what you want—connect,
-                hire, find a job, or collaborate—then step into events built for real conversations.
+              <p className="mt-4 max-w-xl border-l-2 border-[var(--swaap-accent)] pl-4 text-lg font-medium italic text-white/95">
+                Greatness awaits those who take the risk of pursuing it.
               </p>
+              <p className="mt-6 max-w-xl text-lg text-white/85">
+                SWAAP is where professionals create connections, connect with purpose, and collaborate through
+                curated meetups and swaps.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                {KEYWORDS.map((word) => (
+                  <span
+                    key={word}
+                    className="rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-sm font-semibold backdrop-blur-sm"
+                  >
+                    {word}
+                  </span>
+                ))}
+                <span className="rounded-full border border-[var(--swaap-lime)]/50 bg-[var(--swaap-lime)]/20 px-4 py-1.5 text-sm font-semibold text-[var(--swaap-lime)]">
+                  Easy
+                </span>
+              </div>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-base font-semibold text-zinc-900 shadow-lg shadow-black/20 transition hover:bg-zinc-100"
+                  className="inline-flex items-center justify-center rounded-xl bg-[var(--swaap-accent)] px-6 py-3 text-base font-semibold text-[var(--swaap-ink)] shadow-lg shadow-black/15 transition hover:brightness-105"
                 >
                   Get started
                 </Link>
                 <Link
                   href="/events"
-                  className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-base font-medium text-white backdrop-blur transition hover:bg-white/10"
+                  className="inline-flex items-center justify-center rounded-xl border-2 border-white/40 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur transition hover:bg-white/18"
                 >
                   Browse events
                 </Link>
               </div>
             </div>
             <div className="relative animate-fade-up animation-delay-200">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-violet-500/10">
-                <ImagePlaceholder className="h-full w-full" gradient="violet" label="Hero visual — replace with photography" />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-3">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/20 shadow-2xl shadow-black/25">
+                <ImagePlaceholder className="h-full w-full" gradient="swaap" label="Hero visual" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--swaap-deep)]/90 via-transparent to-transparent" />
+                <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
                   {["Live meetups", "Hybrid", "Global"].map((t) => (
                     <span
                       key={t}
-                      className="rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-medium text-white backdrop-blur"
+                      className="rounded-full border border-white/25 bg-black/25 px-3 py-1 text-xs font-semibold text-white backdrop-blur"
                     >
                       {t}
                     </span>
                   ))}
                 </div>
               </div>
-              <div className="animate-float absolute -right-4 -top-4 hidden h-24 w-24 rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md sm:block" />
-              <div className="animate-float-delayed absolute -bottom-6 -left-6 hidden h-20 w-32 rounded-2xl border border-violet-500/30 bg-violet-500/10 backdrop-blur-md sm:block" />
+              <div className="animate-float absolute -right-4 -top-4 hidden h-24 w-24 rounded-2xl border border-[var(--swaap-sky)]/40 bg-[var(--swaap-sky)]/15 backdrop-blur-md sm:block" />
+              <div className="animate-float-delayed absolute -bottom-6 -left-6 hidden h-20 w-32 rounded-2xl border border-[var(--swaap-accent)]/35 bg-[var(--swaap-accent)]/10 backdrop-blur-md sm:block" />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-neutral-200 bg-white py-16 sm:py-24">
+      <section className="border-b border-[var(--border)] bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-xl animate-fade-up">
-              <h2 className="text-2xl font-semibold tracking-tight text-black sm:text-3xl">Next on the calendar</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--swaap-ink)] sm:text-3xl">
+                Next on the calendar
+              </h2>
               <p className="mt-3 text-neutral-600">
-                Preview events (dummy data for now). Wire your CMS or database when you are ready.
+                Upcoming SWAAP events—reserve a spot and we’ll confirm your request.
               </p>
             </div>
             <Link
               href="/events"
-              className="shrink-0 text-sm font-medium text-violet-700 hover:underline animate-fade-up animation-delay-100"
+              className="shrink-0 text-sm font-semibold text-[var(--swaap-primary)] hover:underline animate-fade-up animation-delay-100"
             >
               View all events →
             </Link>
@@ -168,26 +195,26 @@ export default function HomePageClient() {
         </div>
       </section>
 
-      <section className="border-b border-neutral-200 py-16 sm:py-24">
+      <section className="border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--swaap-sky)_12%,white)] py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-center text-2xl font-semibold tracking-tight text-black sm:text-3xl animate-fade-up">
+          <h2 className="font-display text-center text-2xl font-bold tracking-tight text-[var(--swaap-ink)] sm:text-3xl animate-fade-up">
             How SWAAP works
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-neutral-600 animate-fade-up animation-delay-100">
-            Phone verification first—then your goals—then the room where introductions happen.
+            Verify with your phone, share what you want, then step into rooms built for real conversation.
           </p>
           <div className="mt-14 grid gap-8 sm:grid-cols-3">
             {steps.map(({ step, title, desc }, i) => (
               <div
                 key={step}
-                className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-500/10 animate-fade-up"
+                className="group relative overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--swaap-primary)_12%,white)] bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg animate-fade-up"
                 style={{ animationDelay: `${150 + i * 100}ms` }}
               >
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 transition-transform group-hover:scale-150" />
-                <span className="relative inline-flex size-11 items-center justify-center rounded-xl bg-zinc-900 text-sm font-bold text-white">
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[color-mix(in_srgb,var(--swaap-sky)_35%,transparent)] transition-transform group-hover:scale-150" />
+                <span className="relative inline-flex size-11 items-center justify-center rounded-xl bg-[var(--swaap-primary)] text-sm font-bold text-white">
                   {step}
                 </span>
-                <h3 className="relative mt-4 text-lg font-semibold text-black">{title}</h3>
+                <h3 className="font-display relative mt-4 text-lg font-semibold text-[var(--swaap-ink)]">{title}</h3>
                 <p className="relative mt-2 text-neutral-600">{desc}</p>
               </div>
             ))}
@@ -195,30 +222,43 @@ export default function HomePageClient() {
         </div>
       </section>
 
-      <section className="border-b border-neutral-200 bg-gradient-to-b from-violet-50/80 to-white py-16 sm:py-24">
+      <section className="border-b border-[var(--border)] bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="animate-fade-up">
-              <h2 className="text-2xl font-semibold tracking-tight text-black sm:text-3xl">Built for professional meetups</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--swaap-ink)] sm:text-3xl">
+                Built for professional meetups
+              </h2>
               <p className="mt-3 text-neutral-600">
-                Visual placeholders stand in for photography and video—drop in brand assets when your creative is ready.
+                Trust-first profiles, curated events, and a community focused on meaningful exchange—not endless feeds.
               </p>
-              <div className="mt-10 grid gap-4 sm:grid-cols-2">
-                {pillars.map(({ title, desc }, i) => (
-                  <div
-                    key={title}
-                    className="rounded-xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur animate-fade-up"
-                    style={{ animationDelay: `${100 + i * 60}ms` }}
-                  >
-                    <h3 className="font-semibold text-black">{title}</h3>
-                    <p className="mt-2 text-sm text-neutral-600">{desc}</p>
-                  </div>
-                ))}
-              </div>
+              <ul className="mt-8 space-y-4 text-neutral-700">
+                <li className="flex gap-3">
+                  <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--swaap-lime)]" />
+                  <span>
+                    <strong className="text-[var(--swaap-ink)]">Verified access</strong> — phone sign-in and rich
+                    profiles.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--swaap-sky)]" />
+                  <span>
+                    <strong className="text-[var(--swaap-ink)]">Curated events</strong> — formats that encourage real
+                    dialogue.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-1 size-2 shrink-0 rounded-full bg-[var(--swaap-accent)]" />
+                  <span>
+                    <strong className="text-[var(--swaap-ink)]">Purpose-driven</strong> — hiring, collaboration,
+                    mentorship, and more.
+                  </span>
+                </li>
+              </ul>
             </div>
             <div className="grid grid-cols-2 gap-4 animate-fade-up animation-delay-200">
-              <ImagePlaceholder className="aspect-[3/4] w-full rounded-2xl" gradient="violet" label="Community" />
-              <ImagePlaceholder className="mt-8 aspect-[3/4] w-full rounded-2xl" gradient="warm" label="Venue / stage" />
+              <ImagePlaceholder className="aspect-[3/4] w-full rounded-2xl" gradient="swaap" label="Community" />
+              <ImagePlaceholder className="mt-8 aspect-[3/4] w-full rounded-2xl" gradient="lime" label="Venue" />
             </div>
           </div>
         </div>
@@ -226,25 +266,29 @@ export default function HomePageClient() {
 
       <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-zinc-900 px-6 py-14 text-center sm:px-12 sm:py-16">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.25),transparent_50%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(6,182,212,0.15),transparent_45%)]" />
-            <h2 className="relative text-2xl font-semibold text-white sm:text-3xl">Ready to swap?</h2>
-            <p className="relative mx-auto mt-4 max-w-lg text-zinc-400">
-              Sign in with your phone, complete your professional profile, and explore what is next on SWAAP.
+          <div
+            className="relative overflow-hidden rounded-3xl px-6 py-14 text-center sm:px-12 sm:py-16"
+            style={{ background: "var(--swaap-hero-gradient)" }}
+          >
+            <div className="pointer-events-none absolute inset-0 opacity-60">
+              <div className="animate-mesh absolute inset-0" />
+            </div>
+            <h2 className="font-display relative text-2xl font-bold text-white sm:text-3xl">Ready to collaborate?</h2>
+            <p className="relative mx-auto mt-4 max-w-lg text-white/85">
+              Sign in with your phone, complete your profile, and explore what’s next on SWAAP.
             </p>
             <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link
                 href="/login"
-                className="rounded-xl bg-white px-6 py-3 text-base font-semibold text-zinc-900 transition hover:bg-zinc-100"
+                className="rounded-xl bg-[var(--swaap-accent)] px-6 py-3 text-base font-semibold text-[var(--swaap-ink)] transition hover:brightness-105"
               >
                 Sign in with phone
               </Link>
               <Link
-                href="/discover"
-                className="rounded-xl border border-white/20 px-6 py-3 text-base font-medium text-white transition hover:bg-white/10"
+                href="/explore"
+                className="rounded-xl border-2 border-white/40 px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10"
               >
-                Discover professionals
+                Explore professionals
               </Link>
             </div>
           </div>

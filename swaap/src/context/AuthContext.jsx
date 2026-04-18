@@ -75,11 +75,14 @@ export function AuthProvider({ children }) {
     return u.getIdToken();
   }, []);
 
+  const isAdmin = Boolean(profile?.userType === "Admin");
+
   const value = useMemo(
     () => ({
       firebaseUser,
       profile,
       userExists,
+      isAdmin,
       loading,
       demoNoBackend,
       apiConfigured: Boolean(getApiBase()),
@@ -91,6 +94,7 @@ export function AuthProvider({ children }) {
       firebaseUser,
       profile,
       userExists,
+      isAdmin,
       loading,
       demoNoBackend,
       signOut,

@@ -20,4 +20,6 @@ export const firebaseConfig = {
   messagingSenderId: "272021569606",
   appId: "1:272021569606:web:6037efcc94900aa6f24a47",
   measurementId: "G-X68LG5L4LK",
+  /** Realtime Database — enable in Firebase Console and set rules (see `pair_messages` in project docs). */
+  databaseURL: "https://swaapevents-default-rtdb.firebaseio.com",
 };
