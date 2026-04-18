@@ -1,109 +1,70 @@
 # SWAAP Backend
 
-Node.js (Express) API for SWAAP: Firebase phone authentication verification, user profiles stored in SQLite, and dummy events with registration.
+Node.js **Express** API for SWAAP: **Firebase phone auth** verification, **SQLite** persistence for users and events, **event reservations** (signups), and **admin** tools. The service account can read **Firebase Realtime Database** threads for **event-scoped host–guest chat** (used by the admin panel).
+
+## Features (summary)
+
+- Verify Firebase **ID tokens** and return whether the user has completed onboarding.
+- **Sync admin role** on each verify: profiles whose phone matches the organiser allowlist get `userType: "Admin"` (see [Admin users](#admin-users)).
+- **Users**: create/update profile, public directory, public profile by uid, my event reservations.
+- **Events**: list/detail from SQLite; optional Bearer token attaches `isRegistered` and `reservationStatus`.
+- **Reservations**: `POST /api/events/:id/reserve` creates a **pending_confirmation** row (not a final ticket until you confirm in your process).
+- **Admin** (Bearer + Admin): list users, reservations, events; create events (Swaap stream, host uid, price in **numeric SAR** as stored); list signups per event; **read** host–attendee chat messages for an event via the Admin SDK.
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and set variables.
-2. In [Firebase Console](https://console.firebase.google.com/) → your project → **Project settings** → **Service accounts** → **Generate new private key**. Put the entire JSON object into `FIREBASE_SERVICE_ACCOUNT` as a single line in `.env`, **or** set `GOOGLE_APPLICATION_CREDENTIALS` to the path of that JSON file.
-3. Enable **Phone** sign-in under **Authentication** → **Sign-in method** (client app uses the same Firebase project as in `swaap/src/lib/firebase-config.js`).
-4. Install and run:
+1. Copy `.env.example` to `.env` and set variables (see [Environment variables](#environment-variables)).
+2. In [Firebase Console](https://console.firebase.google.com/) → your project → **Project settings** → **Service accounts** → **Generate new private key**. Put the entire JSON object into `FIREBASE_SERVICE_ACCOUNT` as a **single line** in `.env`, **or** set `GOOGLE_APPLICATION_CREDENTIALS` to the path of that JSON file.
+3. Enable **Phone** sign-in under **Authentication** → **Sign-in method** (the web app uses the same Firebase project as in `swaap/src/lib/firebase-config.js`).
+4. Enable **Realtime Database** if you use in-app chat; set `FIREBASE_DATABASE_URL` if it is not the default `https://<project_id>-default-rtdb.firebaseio.com`.
+5. Install and run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Default URL: `http://localhost:4000`. Set `CORS_ORIGIN` to your Next dev/prod origins (comma-separated). The frontend in this repo runs on **port 3001** by default (`npm run dev` in `swaap`), so include `http://localhost:3001` in `CORS_ORIGIN`.
+Default URL: `http://localhost:4000`. Set `CORS_ORIGIN` to your Next dev/prod origins (comma-separated, **no trailing slashes**). The frontend in this monorepo runs on **port 3001** by default (`npm run dev` in `swaap`), so include `http://localhost:3001` in `CORS_ORIGIN`.
 
-## Deploy to GitHub + Render
-
-Target repo: [github.com/mostafahakak/Swaap](https://github.com/mostafahakak/Swaap).
-
-### 1. Push this project to GitHub
-
-From your machine (adjust if your folder layout differs):
-
-```bash
-cd /path/to/Swap
-git init
-git add .
-git commit -m "Initial commit: SWAAP frontend and backend"
-git branch -M main
-git remote add origin https://github.com/mostafahakak/Swaap.git
-git push -u origin main
-```
-
-- Do **not** commit `.env` files or `swaap-backend/data/*.db`.
-- If you prefer the GitHub repo to contain **only** the API, copy `swaap-backend/` to a new folder, `git init` there, and push; then on Render set **Root Directory** to blank (or remove `rootDir` from the blueprint).
-
-### 2. Create a Web Service on Render
-
-1. [Render Dashboard](https://dashboard.render.com/) → **New** → **Web Service** → connect `mostafahakak/Swaap`.
-2. **Root Directory**: `swaap-backend` (if the repo is this monorepo). If the repo is backend-only at the root, leave empty.
-3. **Runtime**: Node.
-4. **Build Command**: `npm install`
-5. **Start Command**: `npm start`
-6. **Instance type**: Persistent disks require a **paid** instance (e.g. **Starter**). The free web tier does **not** keep SQLite across deploys reliably without a disk.
-
-### 3. Persistent disk (SQLite)
-
-1. In the service → **Disks** → **Add disk**.
-2. **Name**: e.g. `swaap-sqlite`
-3. **Mount path**: `/var/data` (recommended; matches the blueprint in `render.yaml`).
-4. **Size**: 1 GB is enough to start.
-
-Set this environment variable so the app writes the database on the disk:
-
-| Key | Value |
-|-----|--------|
-| `DATA_DIR` | `/var/data` |
-
-SQLite file will be `/var/data/swaap.db`. Without `DATA_DIR`, the app uses `./data` inside the container (ephemeral — lost on redeploy).
-
-### 4. Environment variables on Render
+### Environment variables
 
 | Key | Required | Description |
 |-----|----------|-------------|
-| `PORT` | No | Render injects `PORT` automatically; the app already uses `process.env.PORT`. |
-| `DATA_DIR` | **Yes** (with disk) | `/var/data` — must match the disk mount path. |
-| `CORS_ORIGIN` | **Yes** | Comma-separated frontend origins, **no trailing slashes**, e.g. `https://your-app.vercel.app,https://your-app.web.app` |
-| `FIREBASE_SERVICE_ACCOUNT` | **Yes** | Full **Firebase service account JSON** as a **single line** (same as local `.env`). From [Firebase Console](https://console.firebase.google.com/) → Project → **Project settings** → **Service accounts** → **Generate new private key**. |
+| `PORT` | No | Defaults to `4000` locally; Render injects `PORT` automatically. |
+| `CORS_ORIGIN` | **Yes** (production) | Comma-separated allowed browser origins. |
+| `DATA_DIR` | Recommended on Render | Absolute path to persistent disk (e.g. `/var/data`) for `swaap.db`. |
+| `FIREBASE_SERVICE_ACCOUNT` | **Yes** | Service account JSON as one line (or use `GOOGLE_APPLICATION_CREDENTIALS`). |
+| `FIREBASE_DATABASE_URL` | No | Realtime Database URL; if omitted, derived from `project_id` in the service account JSON (or a safe default for this project). Needed for admin chat reads. |
+| `ADMIN_PHONES` | No | Extra admin phones in **E.164**, comma-separated. **Built-in allowlist** (always active): `+966581277377`, `+201282160015` (normalization strips spaces). |
 
-Optional: `GOOGLE_APPLICATION_CREDENTIALS` is **not** needed on Render if you use `FIREBASE_SERVICE_ACCOUNT`.
+Never commit `.env` or `data/*.db` to Git.
 
-### 5. Firebase (what you need besides env)
+## Admin users
 
-- **Service account JSON** → only on the **server** as `FIREBASE_SERVICE_ACCOUNT` (never in the Next.js repo or client bundle).
-- **Same Firebase project** as the web app’s `firebase-config.js` (`apiKey`, `projectId`, etc.). The **web** config stays public in the frontend; Admin SDK uses the service account.
-- **Authentication** → **Phone** provider enabled; **Authorized domains** must include every domain you use for the frontend (e.g. Vercel, Firebase Hosting, `localhost` for dev).
-- **Google Cloud** → the **Browser** API key used in the web app should allow your production **HTTP referrers** (see comments in `swaap/src/lib/firebase-config.js`).
+- **Who is an admin?** Users whose **normalized** phone number matches the built-in list or `ADMIN_PHONES`.
+- **Normalization** (`normalizePhoneE164` in `src/db.js`): trims, removes spaces/dashes/parentheses, ensures a leading `+` for digit-only input.
+- **When it applies**: On **`POST /api/auth/verify`**, if a profile exists, the server runs **`syncAdminRoleForUser`**, which sets `users.user_type` to `Admin` or `User` accordingly. New profiles created via **`POST /api/users/profile`** also get the correct type from the stored phone.
+- **Authorization**: Routes under `/api/admin/*` use `requireAuth` + `requireAdmin` (`user_type === 'Admin'` in SQLite).
 
-### 6. Point the frontend at Render
+## Data model (SQLite)
 
-In your deployed frontend (e.g. Vercel / Firebase Hosting env):
+| Table | Purpose |
+|-------|---------|
+| `users` | One row per Firebase `uid`: phone, email, name, interest, onboarding fields, social/business fields, `user_type`. |
+| `events` | Event records: title, description, image, type, category, dates/times, price (**numeric**, interpreted as **SAR** in the frontend), location, `swaap_stream`, `host_user_id`, agenda JSON, etc. |
+| `event_reservations` | Signup requests: `user_id`, `event_id`, snapshot name/phone/email, `status` (`pending_confirmation`, `confirmed`, …). |
 
-```env
-NEXT_PUBLIC_API_URL=https://swaap-backend.onrender.com
-```
+On first start with an empty `events` table, **`seedEventsIfEmpty()`** inserts rows from `src/data/dummy-events.js`.
 
-Use your **actual** Render service URL (HTTPS, no trailing slash).
+## Firebase Realtime Database (chat)
 
-### 7. Blueprint (optional)
-
-This repo includes [`render.yaml`](../render.yaml) at the monorepo root for **Infrastructure as Code**. You can use **New** → **Blueprint** on Render and select the repo; then add secret env vars in the UI after the service is created.
-
----
-
-## Data
-
-- **SQLite** file: `data/swaap.db` locally, or `$DATA_DIR/swaap.db` when `DATA_DIR` is set (e.g. on Render).
-- **Tables**: `users` (profile keyed by Firebase `uid`), `event_registrations` (`user_id`, `event_id`).
-- **Events**: In-memory dummy list in `src/data/dummy-events.js` (replace with a real data source later).
+- The **web client** writes guest–host messages under paths like `event_pair_messages/{eventId}/{minUid}/{maxUid}/items` (see the frontend `pair-messages` helper).
+- **Security rules** should allow only the two participant uids to read/write those nodes (see comments in `swaap/src/lib/firebase-config.js`).
+- This backend **reads** those paths with the **Admin SDK** for the organiser UI: `readEventHostAttendeeMessages` in `src/firebase-admin.js` (bypasses client rules).
 
 ## API reference
 
-All JSON bodies use `Content-Type: application/json`. Unless noted, errors return `{ "error": "message" }` with an appropriate status code.
+All JSON bodies use `Content-Type: application/json` unless noted. Errors generally return `{ "error": "message" }` with an appropriate HTTP status.
 
 ### Health
 
@@ -115,37 +76,72 @@ All JSON bodies use `Content-Type: application/json`. Unless noted, errors retur
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/auth/verify` | **Body:** `{ "idToken": "<Firebase ID token>" }`. Verifies the token with Firebase Admin. **Response:** `{ uid, phone, userExists, profile? }`. `profile` is present when a row exists in `users` for that `uid`. Use this after the client completes phone OTP to decide whether to send the user to onboarding (`userExists: false`) or home. |
+| `POST` | `/api/auth/verify` | **Body:** `{ "idToken": "<Firebase ID token>" }`. Verifies the token. **Response:** `{ uid, phone, userExists, profile? }`. If `profile` exists, **`user_type` is synced** from the organiser phone allowlist before the profile is returned. |
 
 ### Users
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/users/me` | `Authorization: Bearer <idToken>` | Returns `{ profile }`. **404** if no profile row (user not onboarded). |
-| `POST` | `/api/users/profile` | `Authorization: Bearer <idToken>` | **Body:** `{ name, email, interest, hearAbout }`. Creates the `users` row for `uid` from the token. **409** if profile already exists. `interest` must be one of the allowed values (see below). `hearAbout` is free text (2–500 chars), e.g. how they found SWAAP. Optional legacy fields: `professionArea`, `title`, `linkedinUrl` (stored if sent). |
+| `GET` | `/api/users/me` | Bearer | `{ profile }`. **404** if not onboarded. |
+| `GET` | `/api/users/me/event-reservations` | Bearer | `{ reservations }` for the current user. |
+| `GET` | `/api/users/directory` | None | **Public directory:** `{ users }` — safe fields only (no phone/email in public payload shape). |
+| `GET` | `/api/users/:userId/public` | None | `{ profile }` for Explore / public profile links. **404** if unknown. |
+| `POST` | `/api/users/profile` | Bearer | Create profile once. **Body:** `name`, `email`, `interest`, `hearAbout`, plus optional extended fields. **409** if profile exists. |
+| `PATCH` | `/api/users/profile` | Bearer | Partial update; `interest` must remain in the allowed list if sent. |
 
-**Allowed `interest` values** (professional meetup goals):
+**Allowed `interest` values** are defined in `src/data/dummy-events.js` (`ALLOWED_INTERESTS`) and must stay in sync with the web app’s constants.
 
-- `Connect with people`
-- `Hire someone`
-- `Seeking job`
-- `Find collaborators / partners`
-- `Offer or find mentorship`
-- `Explore new opportunities`
-
-### Events (dummy data)
+### Events
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/events` | Optional `Bearer` | Returns `{ events }` — list with public fields. If a valid Bearer is sent **and** the user has a profile, each item includes `isRegistered` (boolean). |
-| `GET` | `/api/events/:id` | Optional `Bearer` | Returns `{ event }` — full detail (`longDescription`, `agenda`, `coverImage`, etc.) plus `isRegistered` when applicable (same rules as list). |
-| `POST` | `/api/events/:id/register` | Required `Bearer` | Registers the user for the event. **403** if the user has no profile. **404** if `id` is unknown. **Response:** `{ ok, eventId, message }`. |
+| `GET` | `/api/events` | Optional Bearer | `{ events }` from SQLite. With valid Bearer **and** existing profile, each event includes `isRegistered` and `reservationStatus`. |
+| `GET` | `/api/events/:id` | Optional Bearer | `{ event }` with detail fields (`longDescription`, `agenda`, `swaapStream`, `hostUserId`, …). |
+| `POST` | `/api/events/:id/reserve` | Bearer | Creates a reservation request. **403** without profile. **409** if already requested. |
+
+### Admin (`/api/admin`)
+
+All routes require **`Authorization: Bearer <idToken>`** and **`user_type: Admin`** in the database.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/users` | `{ users }` — full user rows (includes phone, email). |
+| `GET` | `/api/admin/reservations` | `{ reservations }` — all signup rows with event title. |
+| `GET` | `/api/admin/events` | `{ events }` — event list (same shape as public list fields from DB). |
+| `GET` | `/api/admin/events/:eventId/reservations` | `{ reservations }` for one event (`userId`, name, phone, email, status, …). |
+| `GET` | `/api/admin/events/:eventId/conversations/:attendeeUserId/messages` | `{ messages, notice? }` — reads RTDB **event-scoped** thread between **event `hostUserId`** and **attendee** Firebase uid. Empty list if no messages or no host. |
+| `POST` | `/api/admin/events` | **Body:** `title`, `description`, `startDate`, `startTime`, `endDate`, `endTime`, optional `image`, `type`, `category`, `status`, `price` (SAR number), `location`, `longDescription`, `agenda`, `attendeesHint`, `swaapStream`, `hostUserId`. Creates a new event. |
+
+## Deploy to GitHub
+
+This API lives in the monorepo folder **`swaap-backend/`**.
+
+```bash
+cd /path/to/Swap
+git add swaap-backend
+git commit -m "Update SWAAP backend"
+git push origin main
+```
+
+Do **not** commit `.env` or production `*.db` files. Use `.gitignore` as configured in the repo root.
+
+## Deploy to Render (or similar)
+
+1. Connect the GitHub repo; set **Root Directory** to `swaap-backend` if the service is the API only.
+2. **Build:** `npm install` · **Start:** `npm start`
+3. Mount a **persistent disk** (paid tier) and set `DATA_DIR` to the mount path (e.g. `/var/data`).
+4. Set `CORS_ORIGIN`, `FIREBASE_SERVICE_ACCOUNT`, and optionally `FIREBASE_DATABASE_URL` and `ADMIN_PHONES`.
+
+See also the monorepo **`render.yaml`** blueprint if present.
 
 ## Client integration (Next.js)
 
-The SWAAP web app uses static export. It calls this API from the browser using `NEXT_PUBLIC_API_URL` (e.g. `http://localhost:4000`). Phone OTP runs in the client with the Firebase Web SDK; only the **ID token** is sent to this backend for verification and protected routes.
+The web app sets **`NEXT_PUBLIC_API_URL`** to this API’s public HTTPS URL (no trailing slash). Phone OTP runs in the browser; only **ID tokens** are sent to protected routes.
+
+**Currency:** amounts are stored as numbers; the UI labels them **SAR**.
 
 ## Security notes
 
-- Never expose the service account in client code; keep it only in backend environment variables or a secure file on the server.
-- In production, use HTTPS, restrict `CORS_ORIGIN`, and consider rate limiting on `/api/auth/verify` and registration endpoints.
+- Never expose the service account in client bundles; keep it only in server environment variables.
+- Use HTTPS in production; restrict `CORS_ORIGIN`; consider rate limiting on `/api/auth/verify` and write endpoints.
+- Tighten **Realtime Database rules** so only conversation participants can access `pair_messages` / `event_pair_messages` paths; rely on Admin SDK only on the server for organiser read access.

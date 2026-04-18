@@ -20,6 +20,11 @@ export const firebaseConfig = {
   messagingSenderId: "272021569606",
   appId: "1:272021569606:web:6037efcc94900aa6f24a47",
   measurementId: "G-X68LG5L4LK",
-  /** Realtime Database — enable in Firebase Console and set rules (see `pair_messages` in project docs). */
+  /**
+   * Realtime Database — enable in Console. Suggested rules pattern:
+   * - `pair_messages/$a/$b/items` and `event_pair_messages/$eventId/$a/$b/items`:
+   *   `.read`/`.write` only if `auth.uid` is `$a` or `$b` (and validate `senderId` on write).
+   * Server-side admin reads use the Firebase Admin SDK (bypass rules).
+   */
   databaseURL: "https://swaapevents-default-rtdb.firebaseio.com",
 };

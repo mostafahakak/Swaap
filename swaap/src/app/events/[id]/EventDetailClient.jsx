@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { HostChatPanel } from "@/components/HostChatPanel";
 import { ImagePlaceholder } from "@/components/ImagePlaceholder";
 import { displayEventMeta, isRemoteImage } from "@/lib/event-display";
+import { formatEventPrice } from "@/lib/format-price";
 
 export default function EventDetailClient({ id }) {
   const router = useRouter();
@@ -80,7 +81,7 @@ export default function EventDetailClient({ id }) {
   }
 
   const meta = displayEventMeta(event);
-  const priceLabel = meta.price === 0 ? "Free" : `£${meta.price}`;
+  const priceLabel = formatEventPrice(meta.price);
   const longText = meta.longDescription || meta.description;
   const agenda = meta.agenda;
   const statusLabel = meta.status ? String(meta.status) : null;
@@ -240,11 +241,11 @@ export default function EventDetailClient({ id }) {
             <p className="text-sm font-medium text-[var(--swaap-ink)]">Message the host</p>
             <p className="mt-1 text-xs text-neutral-500">Uses in-app chat (Firebase Realtime Database).</p>
             <div className="mt-3">
-              <HostChatPanel
-                myUid={firebaseUser?.uid}
+                <HostChatPanel myUid={firebaseUser?.uid}
                 peerUid={meta.hostUserId}
                 peerLabel={hostProfile?.name || "the host"}
                 title="Message the host"
+                eventId={meta.id}
               />
             </div>
           </div>
@@ -284,7 +285,7 @@ export default function EventDetailClient({ id }) {
               ? "Submitting…"
               : meta.price === 0
                 ? "Request a free spot"
-                : `Request a spot (£${meta.price})`}
+                : `Request a spot (${formatEventPrice(meta.price)})`}
         </button>
         <Link
           href="/events"

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { dummyEvents } from "@/lib/dummy-data";
+import { formatEventPrice } from "@/lib/format-price";
 
 export default function CheckoutClient({ id }) {
   const router = useRouter();
@@ -35,13 +36,13 @@ export default function CheckoutClient({ id }) {
 
       <h1 className="mt-8 text-2xl font-semibold text-black">Complete payment</h1>
       <p className="mt-2 text-neutral-600">
-        Secure checkout for <strong>{event.title}</strong> — £{event.price}
+        Secure checkout for <strong>{event.title}</strong> — {formatEventPrice(event.price)}
       </p>
 
       <div className="mt-10 rounded-2xl border border-neutral-200 bg-white p-6 sm:p-8">
         <div className="mb-6 flex items-center justify-between border-b border-neutral-200 pb-4">
           <span className="text-neutral-600">Event</span>
-          <span className="font-medium text-black">£{event.price}</span>
+          <span className="font-medium text-black">{formatEventPrice(event.price)}</span>
         </div>
 
         <form onSubmit={handlePay} className="space-y-5">
@@ -83,7 +84,7 @@ export default function CheckoutClient({ id }) {
             disabled={processing}
             className="w-full rounded-lg bg-black py-3 text-base font-medium text-white transition-colors hover:bg-neutral-800 disabled:opacity-60"
           >
-            {processing ? "Processing…" : `Pay £${event.price}`}
+            {processing ? "Processing…" : `Pay ${formatEventPrice(event.price)}`}
           </button>
         </form>
       </div>

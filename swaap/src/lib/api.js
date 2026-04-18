@@ -180,3 +180,37 @@ export async function apiAdminCreateEvent(idToken, body) {
   if (!res.ok) throw new Error(data.error || "Could not create event");
   return data.event;
 }
+
+export async function apiAdminListEvents(idToken) {
+  const base = getApiBase();
+  if (!base) throw new Error("NEXT_PUBLIC_API_URL is not set");
+  const res = await fetch(`${base}/api/admin/events`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  const data = await parseJson(res);
+  if (!res.ok) throw new Error(data.error || "Could not load events");
+  return data.events ?? [];
+}
+
+export async function apiAdminEventReservations(idToken, eventId) {
+  const base = getApiBase();
+  if (!base) throw new Error("NEXT_PUBLIC_API_URL is not set");
+  const res = await fetch(`${base}/api/admin/events/${encodeURIComponent(eventId)}/reservations`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  const data = await parseJson(res);
+  if (!res.ok) throw new Error(data.error || "Could not load signups");
+  return data.reservations ?? [];
+}
+
+export async function apiAdminEventConversation(idToken, eventId, attendeeUserId) {
+  const base = getApiBase();
+  if (!base) throw new Error("NEXT_PUBLIC_API_URL is not set");
+  const res = await fetch(
+    `${base}/api/admin/events/${encodeURIComponent(eventId)}/conversations/${encodeURIComponent(attendeeUserId)}/messages`,
+    { headers: { Authorization: `Bearer ${idToken}` } }
+  );
+  const data = await parseJson(res);
+  if (!res.ok) throw new Error(data.error || "Could not load messages");
+  return { messages: data.messages ?? [], notice: data.notice };
+}

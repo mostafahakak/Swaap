@@ -7,8 +7,11 @@ import {
   listAllReservations,
   listAllUsers,
   getEventById,
+  listEvents,
+  listReservationsForEvent,
 } from "../db.js";
 import { SWAAP_STREAMS } from "../data/dummy-events.js";
+import { readEventHostAttendeeMessages } from "../firebase-admin.js";
 
 export const adminRouter = Router();
 
@@ -20,6 +23,42 @@ adminRouter.get("/users", (_req, res) => {
 
 adminRouter.get("/reservations", (_req, res) => {
   res.json({ reservations: listAllReservations() });
+});
+
+adminRouter.get("/events", (_req, res) => {
+  res.json({ events: listEvents() });
+});
+
+adminRouter.get("/events/:eventId/reservations", (req, res) => {
+  const ev = getEventById(req.params.eventId);
+  if (!ev) {
+    return res.status(404).json({ error: "Event not found" });
+  }
+  return res.json({ reservations: listReservationsForEvent(req.params.eventId) });
+});
+
+adminRouter.get("/events/:eventId/conversations/:attendeeUserId/messages", async (req, res, next) => {
+  try {
+    const ev = getEventById(req.params.eventId);
+    if (!ev) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+    const hostUid = ev.hostUserId;
+    if (!hostUid) {
+      return res.json({
+        messages: [],
+        notice: "Assign a host to this event to collect host–guest messages.",
+      });
+    }
+    const messages = await readEventHostAttendeeMessages(
+      req.params.eventId,
+      hostUid,
+      req.params.attendeeUserId
+    );
+    return res.json({ messages });
+  } catch (e) {
+    next(e);
+  }
 });
 
 /**

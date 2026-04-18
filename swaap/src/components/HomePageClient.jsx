@@ -8,10 +8,11 @@ import { apiGetEvents } from "@/lib/api";
 import { dummyEvents } from "@/lib/dummy-data";
 import { useAuth } from "@/context/AuthContext";
 import { displayEventMeta, isRemoteImage } from "@/lib/event-display";
+import { formatEventPrice } from "@/lib/format-price";
 
 function NextEventCard({ e, delay }) {
   const m = displayEventMeta(e);
-  const priceLabel = m.price === 0 ? "Free" : `£${m.price}`;
+  const priceLabel = formatEventPrice(m.price);
   return (
     <Link
       href={`/events/${m.id}`}

@@ -223,15 +223,47 @@ export function listPublicProfiles() {
   return rows.map((r) => mapPublicUser(r));
 }
 
-/** Admin role is never chosen by the client—only if phone matches ADMIN_PHONES (E.164). */
-function resolveAdminType(phone) {
-  const normalized = (phone ?? "").trim();
-  const phones = (process.env.ADMIN_PHONES || "")
+/** Strip spaces/dashes/parens; normalize for E.164-style comparison. */
+export function normalizePhoneE164(phone) {
+  if (phone == null) return "";
+  let s = String(phone).trim();
+  if (!s) return "";
+  s = s.replace(/[\s\-().]/g, "");
+  if (!s.startsWith("+") && /^\d+$/.test(s)) s = `+${s}`;
+  return s;
+}
+
+/** Built-in organiser numbers (+966 58 127 7377, +201282160015); merge with ADMIN_PHONES env. */
+function adminPhoneAllowlist() {
+  const builtin = ["+966 58 127 7377", "+201282160015"].map((p) => normalizePhoneE164(p));
+  const fromEnv = (process.env.ADMIN_PHONES || "")
     .split(",")
-    .map((s) => s.trim())
+    .map((x) => normalizePhoneE164(x.trim()))
     .filter(Boolean);
-  if (normalized && phones.includes(normalized)) return "Admin";
-  return "User";
+  return new Set([...builtin, ...fromEnv]);
+}
+
+export function isPhoneAdminAllowlist(phone) {
+  const n = normalizePhoneE164(phone);
+  return Boolean(n && adminPhoneAllowlist().has(n));
+}
+
+/** Admin role is never chosen by the client—only if phone matches allowlist. */
+function resolveAdminType(phone) {
+  return isPhoneAdminAllowlist(phone) ? "Admin" : "User";
+}
+
+/** Call after login so admin numbers always get Admin even if the row was created earlier as User. */
+export function syncAdminRoleForUser(userId, tokenPhone) {
+  const row = db.prepare("SELECT phone FROM users WHERE id = ?").get(userId);
+  if (!row) return null;
+  const phone = normalizePhoneE164(tokenPhone) || normalizePhoneE164(row.phone);
+  const nextType = isPhoneAdminAllowlist(phone) ? "Admin" : "User";
+  const cur = db.prepare("SELECT user_type FROM users WHERE id = ?").get(userId);
+  if (cur?.user_type !== nextType) {
+    db.prepare("UPDATE users SET user_type = ? WHERE id = ?").run(nextType, userId);
+  }
+  return getUserById(userId);
 }
 
 export function createUser(row) {
@@ -415,6 +447,29 @@ export function listAllReservations() {
        ORDER BY r.created_at DESC`
     )
     .all();
+  return rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    eventId: row.event_id,
+    eventTitle: row.event_title,
+    name: row.name,
+    phone: row.phone,
+    email: row.email,
+    status: row.status,
+    createdAt: row.created_at,
+  }));
+}
+
+export function listReservationsForEvent(eventId) {
+  const rows = db
+    .prepare(
+      `SELECT r.*, e.title as event_title
+       FROM event_reservations r
+       JOIN events e ON e.id = r.event_id
+       WHERE r.event_id = ?
+       ORDER BY r.created_at DESC`
+    )
+    .all(eventId);
   return rows.map((row) => ({
     id: row.id,
     userId: row.user_id,

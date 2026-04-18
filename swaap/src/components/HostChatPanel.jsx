@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ref, onValue, push } from "firebase/database";
 import { rtdb } from "@/lib/firebase-app";
-import { pairMessagesPath } from "@/lib/pair-messages";
+import { eventPairMessagesPath, pairMessagesPath } from "@/lib/pair-messages";
 
 /**
  * In-app 1:1 messaging via Firebase Realtime Database.
- * Console rules (tighten for production): under `pair_messages/$min/$max/items` allow
- * `.read` / `.write` only when `auth.uid` equals `$min` or `$max`, and validate `senderId`.
+ * With `eventId`, messages live under `event_pair_messages/...` (host ↔ guest per event).
+ * Otherwise `pair_messages/...`. Rules should restrict read/write to the two participant uids.
  */
-export function HostChatPanel({ myUid, peerUid, peerLabel, title = "Message" }) {
+export function HostChatPanel({ myUid, peerUid, peerLabel, title = "Message", eventId = null }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -19,8 +19,9 @@ export function HostChatPanel({ myUid, peerUid, peerLabel, title = "Message" }) 
 
   const path = useMemo(() => {
     if (!myUid || !peerUid || myUid === peerUid) return null;
+    if (eventId) return eventPairMessagesPath(eventId, myUid, peerUid);
     return pairMessagesPath(myUid, peerUid);
-  }, [myUid, peerUid]);
+  }, [myUid, peerUid, eventId]);
 
   useEffect(() => {
     if (!path) return undefined;

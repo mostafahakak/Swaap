@@ -8,10 +8,11 @@ import { useAuth } from "@/context/AuthContext";
 import { ImagePlaceholder } from "@/components/ImagePlaceholder";
 import { displayEventMeta, isRemoteImage } from "@/lib/event-display";
 import { SWAAP_STREAMS } from "@/lib/constants";
+import { formatEventPrice } from "@/lib/format-price";
 
 function EventCard({ e }) {
   const m = displayEventMeta(e);
-  const priceLabel = m.price === 0 ? "Free" : `£${m.price}`;
+  const priceLabel = formatEventPrice(m.price);
   return (
     <Link
       href={`/events/${m.id}`}

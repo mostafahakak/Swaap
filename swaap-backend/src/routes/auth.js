@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyIdToken } from "../firebase-admin.js";
-import { getUserById } from "../db.js";
+import { getUserById, syncAdminRoleForUser } from "../db.js";
 
 export const authRouter = Router();
 
@@ -17,7 +17,10 @@ authRouter.post("/verify", async (req, res) => {
 
   try {
     const decoded = await verifyIdToken(idToken);
-    const profile = getUserById(decoded.uid);
+    let profile = getUserById(decoded.uid);
+    if (profile) {
+      profile = syncAdminRoleForUser(decoded.uid, decoded.phone_number ?? null) ?? profile;
+    }
     return res.json({
       uid: decoded.uid,
       phone: decoded.phone_number ?? null,
