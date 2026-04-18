@@ -2,6 +2,16 @@
 
 Node.js **Express** API for SWAAP: **Firebase phone auth** verification, **SQLite** persistence for users and events, **event reservations** (signups), and **admin** tools. The service account can read **Firebase Realtime Database** threads for **event-scoped host–guest chat** (used by the admin panel).
 
+## Contents
+
+- [Features](#features-summary)
+- [Setup & environment](#setup)
+- [Admin users](#admin-users)
+- [Data model](#data-model-sqlite)
+- [Firebase Realtime Database (chat)](#firebase-realtime-database-chat)
+- [**API documentation**](#api-documentation) — all endpoints, requests, responses, examples
+- [Deploy](#deploy-to-github)
+
 ## Features (summary)
 
 - Verify Firebase **ID tokens** and return whether the user has completed onboarding.
@@ -62,55 +72,504 @@ On first start with an empty `events` table, **`seedEventsIfEmpty()`** inserts r
 - **Security rules** should allow only the two participant uids to read/write those nodes (see comments in `swaap/src/lib/firebase-config.js`).
 - This backend **reads** those paths with the **Admin SDK** for the organiser UI: `readEventHostAttendeeMessages` in `src/firebase-admin.js` (bypasses client rules).
 
-## API reference
+## API documentation
 
-All JSON bodies use `Content-Type: application/json` unless noted. Errors generally return `{ "error": "message" }` with an appropriate HTTP status.
+**In this section:** [Conventions](#api-documentation) · [1. Health](#1-health) · [2. Authentication](#2-authentication) · [3. Users](#3-users) · [4. Events](#4-events) · [5. Admin](#5-admin) · [Reference shapes](#reference-response-shapes)
 
-### Health
+**Base URL:** your server origin (e.g. `http://localhost:4000` or `https://your-api.onrender.com`). All API paths below are relative to that origin.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | `{ ok, service }` — liveness check. |
+**Content-Type:** use `Content-Type: application/json` for any request with a body.
 
-### Auth
+**Authentication:**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/auth/verify` | **Body:** `{ "idToken": "<Firebase ID token>" }`. Verifies the token. **Response:** `{ uid, phone, userExists, profile? }`. If `profile` exists, **`user_type` is synced** from the organiser phone allowlist before the profile is returned. |
+- **Bearer:** `Authorization: Bearer <Firebase ID token>` (from the client after phone sign-in).
+- **Public routes** do not require a header.
 
-### Users
+**CORS:** browser `POST`/`PATCH` must come from an origin listed in `CORS_ORIGIN` (merged with defaults in `src/index.js`).
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/users/me` | Bearer | `{ profile }`. **404** if not onboarded. |
-| `GET` | `/api/users/me/event-reservations` | Bearer | `{ reservations }` for the current user. |
-| `GET` | `/api/users/directory` | None | **Public directory:** `{ users }` — safe fields only (no phone/email in public payload shape). |
-| `GET` | `/api/users/:userId/public` | None | `{ profile }` for Explore / public profile links. **404** if unknown. |
-| `POST` | `/api/users/profile` | Bearer | Create profile once. **Body:** `name`, `email`, `interest`, `hearAbout`, plus optional extended fields. **409** if profile exists. |
-| `PATCH` | `/api/users/profile` | Bearer | Partial update; `interest` must remain in the allowed list if sent. |
+### Error responses
 
-**Allowed `interest` values** are defined in `src/data/dummy-events.js` (`ALLOWED_INTERESTS`) and must stay in sync with the web app’s constants.
+Most failures return JSON:
 
-### Events
+```json
+{ "error": "Human-readable message" }
+```
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/events` | Optional Bearer | `{ events }` from SQLite. With valid Bearer **and** existing profile, each event includes `isRegistered` and `reservationStatus`. |
-| `GET` | `/api/events/:id` | Optional Bearer | `{ event }` with detail fields (`longDescription`, `agenda`, `swaapStream`, `hostUserId`, …). |
-| `POST` | `/api/events/:id/reserve` | Bearer | Creates a reservation request. **403** without profile. **409** if already requested. |
+| Status | Typical cause |
+|--------|----------------|
+| `400` | Missing/invalid body fields, invalid `interest`, validation errors. |
+| `401` | Missing/invalid/expired Firebase token (`/api/auth/verify`, protected routes). |
+| `403` | Authenticated but not allowed (e.g. reserve without profile, non-admin on `/api/admin/*`). |
+| `404` | Unknown user profile, event, or public profile. |
+| `409` | Profile already exists; duplicate reservation for same user+event. |
+| `500` | Unhandled server error (`{ "error": "Internal server error" }`). |
 
-### Admin (`/api/admin`)
+Some `400` responses include extra keys (e.g. `{ "error": "Invalid interest", "allowed": [ ... ] }`).
 
-All routes require **`Authorization: Bearer <idToken>`** and **`user_type: Admin`** in the database.
+---
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/admin/users` | `{ users }` — full user rows (includes phone, email). |
-| `GET` | `/api/admin/reservations` | `{ reservations }` — all signup rows with event title. |
-| `GET` | `/api/admin/events` | `{ events }` — event list (same shape as public list fields from DB). |
-| `GET` | `/api/admin/events/:eventId/reservations` | `{ reservations }` for one event (`userId`, name, phone, email, status, …). |
-| `GET` | `/api/admin/events/:eventId/conversations/:attendeeUserId/messages` | `{ messages, notice? }` — reads RTDB **event-scoped** thread between **event `hostUserId`** and **attendee** Firebase uid. Empty list if no messages or no host. |
-| `POST` | `/api/admin/events` | **Body:** `title`, `description`, `startDate`, `startTime`, `endDate`, `endTime`, optional `image`, `type`, `category`, `status`, `price` (SAR number), `location`, `longDescription`, `agenda`, `attendeesHint`, `swaapStream`, `hostUserId`. Creates a new event. |
+### 1. Health
+
+#### `GET /health`
+
+**Auth:** none.
+
+**Response** `200`:
+
+```json
+{
+  "ok": true,
+  "service": "swaap-backend"
+}
+```
+
+**Example:**
+
+```bash
+curl -s https://YOUR_API/health
+```
+
+---
+
+### 2. Authentication
+
+#### `POST /api/auth/verify`
+
+Verifies a Firebase ID token and returns whether the user has a row in `users`. If a profile exists, **`userType` is synced** to `Admin` or `User` based on the organiser phone allowlist before the response.
+
+**Auth:** none  
+
+**Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `idToken` | string | Yes | Firebase ID token from the client SDK. |
+
+**Response** `200`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uid` | string | Firebase user id. |
+| `phone` | string \| null | E.164 phone from the token, if present. |
+| `userExists` | boolean | `true` if a `users` row exists for `uid`. |
+| `profile` | object | Present only if `userExists`; same fields as in [Full profile](#reference-response-shapes). |
+
+**Errors:** `400` (no idToken), `401` (invalid/expired token).
+
+**Example:**
+
+```bash
+curl -s -X POST https://YOUR_API/api/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"eyJhbGciOi..."}'
+```
+
+---
+
+### 3. Users
+
+Route prefix: `/api/users`
+
+#### `GET /api/users/me`
+
+Returns the authenticated user’s full profile.
+
+**Auth:** `Authorization: Bearer <idToken>`.
+
+**Response** `200`: `{ "profile": <FullProfile> }`  
+
+**Errors:** `401`, `404` `{ "error": "Profile not found", "userExists": false }`
+
+**Example:**
+
+```bash
+curl -s https://YOUR_API/api/users/me \
+  -H "Authorization: Bearer YOUR_ID_TOKEN"
+```
+
+---
+
+#### `GET /api/users/me/event-reservations`
+
+Lists event signup rows for the current user.
+
+**Auth:** Bearer  
+
+**Response** `200`:
+
+```json
+{
+  "reservations": [
+    {
+      "id": 1,
+      "eventId": "evt-1",
+      "eventTitle": "…",
+      "name": "…",
+      "phone": "…",
+      "email": "…",
+      "status": "pending_confirmation",
+      "createdAt": "2026-01-01 12:00:00",
+      "eventStartDate": "2026-05-15",
+      "eventStartTime": "18:00 UTC",
+      "eventStatus": "published"
+    }
+  ]
+}
+```
+
+**Errors:** `401`, `404` (no profile).
+
+---
+
+#### `GET /api/users/directory`
+
+Public member list for Explore (no email/phone in each item).
+
+**Auth:** none  
+
+**Response** `200`: `{ "users": [ <PublicProfile>, ... ] }` — see [Public profile](#public-profile-directory--shared-links).
+
+---
+
+#### `GET /api/users/:userId/public`
+
+Public profile by Firebase uid (`userId` must not be mistaken for the literal path `profile`; this is `GET /api/users/<firebaseUid>/public`).
+
+**Auth:** none  
+
+**Response** `200`: `{ "profile": <PublicProfile> }`  
+
+**Errors:** `404`
+
+**Example:**
+
+```bash
+curl -s "https://YOUR_API/api/users/abcFirebaseUid123/public"
+```
+
+---
+
+#### `POST /api/users/profile`
+
+Creates the `users` row **once** for the token’s `uid`.
+
+**Auth:** Bearer  
+
+**Body (required):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Display name. |
+| `email` | string | Email. |
+| `interest` | string | Must be one of [Allowed interests](#allowed-interest-values). |
+| `hearAbout` | string | 2–500 characters (how they heard about SWAAP). |
+
+**Body (optional):** `professionArea`, `title`, `linkedinUrl`, `jobRole`, `companyName`, `industry`, `lookingFor`, `canOffer`, `businessOwner` (boolean), `businessWebsite`, `socialInstagram`, `socialFacebook`, `socialLinkedin`, `socialSnapchat`, `socialTiktok` (all strings unless noted).
+
+**Response** `201`: `{ "profile": <FullProfile> }`  
+
+**Errors:** `400` (validation / invalid interest + `allowed` array), `401`, `409` (profile already exists).
+
+**Example:**
+
+```bash
+curl -s -X POST https://YOUR_API/api/users/profile \
+  -H "Authorization: Bearer YOUR_ID_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ada","email":"ada@example.com","interest":"Startups","hearAbout":"Friend"}'
+```
+
+---
+
+#### `PATCH /api/users/profile`
+
+Updates the current user’s profile; only sent fields are applied.
+
+**Auth:** Bearer  
+
+**Body:** any subset of profile fields using the same **JSON names** as in `POST` (camelCase: `professionArea`, `hearAbout`, `jobRole`, `companyName`, `lookingFor`, `canOffer`, `businessOwner`, `businessWebsite`, social fields, etc.).
+
+**Response** `200`: `{ "profile": <FullProfile> }`  
+
+**Errors:** `400` (invalid `interest` / `hearAbout` length), `401`, `404` (no profile).
+
+---
+
+### 4. Events
+
+Route prefix: `/api/events`
+
+#### `GET /api/events`
+
+**Auth:** optional Bearer  
+
+- **No header:** each event omits personal signup state (implementation still returns `isRegistered` / `reservationStatus` as for a non-signed-in user).
+- **Valid Bearer + user has profile:** each event includes `isRegistered` and `reservationStatus` for that user.
+
+**Response** `200`:
+
+```json
+{
+  "events": [
+    {
+      "id": "evt-1",
+      "title": "…",
+      "description": "…",
+      "image": "…",
+      "type": "In-person",
+      "category": "Technology",
+      "startDate": "2026-05-15",
+      "startTime": "18:00 UTC",
+      "endDate": "2026-05-15",
+      "endTime": "18:00 UTC",
+      "status": "published",
+      "price": 0,
+      "location": "…",
+      "attendees": 84,
+      "date": "2026-05-15",
+      "time": "18:00 UTC",
+      "industry": "Technology",
+      "swaapStream": "Swaap Connect",
+      "hostUserId": null,
+      "isRegistered": false,
+      "reservationStatus": null
+    }
+  ]
+}
+```
+
+When signed in with a profile, `isRegistered` is `true` if `reservationStatus` is `pending_confirmation` or `confirmed`.
+
+**Example:**
+
+```bash
+curl -s https://YOUR_API/api/events \
+  -H "Authorization: Bearer YOUR_ID_TOKEN"
+```
+
+---
+
+#### `GET /api/events/:id`
+
+**Auth:** optional Bearer (same behaviour as list for `isRegistered` / `reservationStatus`).
+
+**Response** `200`: `{ "event": <EventDetail> }` — list fields plus `longDescription`, `agenda` (array of strings).  
+
+**Errors:** `404`
+
+---
+
+#### `POST /api/events/:id/reserve`
+
+Creates a reservation request (`pending_confirmation`).
+
+**Auth:** Bearer  
+
+**Body:** none  
+
+**Response** `201`:
+
+```json
+{
+  "ok": true,
+  "eventId": "evt-1",
+  "status": "pending_confirmation",
+  "message": "Reservation request submitted"
+}
+```
+
+**Errors:** `401`, `403` (no profile), `404` (unknown event), `409` (already reserved).
+
+**Example:**
+
+```bash
+curl -s -X POST https://YOUR_API/api/events/evt-1/reserve \
+  -H "Authorization: Bearer YOUR_ID_TOKEN"
+```
+
+---
+
+### 5. Admin
+
+Route prefix: `/api/admin`  
+
+**Auth:** every route requires `Authorization: Bearer <idToken>` where the user’s `userType` in SQLite is **`Admin`**.  
+
+**Errors:** `401` (token), `403` `{ "error": "Admin access required" }`.
+
+---
+
+#### `GET /api/admin/users`
+
+**Response** `200`: `{ "users": [ <FullProfile>, ... ] }`  
+Each object includes `id` (Firebase uid), `phone`, `email`, `userType`, etc.
+
+---
+
+#### `GET /api/admin/reservations`
+
+**Response** `200`:
+
+```json
+{
+  "reservations": [
+    {
+      "id": 1,
+      "userId": "firebaseUid",
+      "eventId": "evt-1",
+      "eventTitle": "…",
+      "name": "…",
+      "phone": "…",
+      "email": "…",
+      "status": "pending_confirmation",
+      "createdAt": "…"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/admin/events`
+
+**Response** `200`: `{ "events": [ <EventListItem>, ... ] }`  
+Same shape as public list items from the database (no `longDescription`/`agenda` in list mapper).
+
+---
+
+#### `GET /api/admin/events/:eventId/reservations`
+
+**Errors:** `404` if `eventId` is unknown.
+
+**Response** `200`: `{ "reservations": [ ... ] }`  
+Same reservation shape as `/api/admin/reservations`, filtered to one event.
+
+---
+
+#### `GET /api/admin/events/:eventId/conversations/:attendeeUserId/messages`
+
+Reads Firebase Realtime Database messages for the **event-scoped** thread between the event’s **`hostUserId`** and **`attendeeUserId`** (sorted path under `event_pair_messages/...`).
+
+**Errors:** `404` if event not found.
+
+**Response** `200` (normal):
+
+```json
+{
+  "messages": [
+    {
+      "id": "-NxPushId",
+      "text": "Hello",
+      "senderId": "firebaseUid",
+      "createdAt": 1710000000000
+    }
+  ]
+}
+```
+
+**Response** `200` (no host on event):
+
+```json
+{
+  "messages": [],
+  "notice": "Assign a host to this event to collect host–guest messages."
+}
+```
+
+---
+
+#### `POST /api/admin/events`
+
+Creates a new event. **`price`** is stored as a number (interpreted as **SAR** in the app UI).
+
+**Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | Yes | Event title. |
+| `startDate` | string | Yes | e.g. `2026-06-01`. |
+| `startTime` | string | Yes | e.g. `18:00`. |
+| `endDate` | string | Yes | |
+| `endTime` | string | Yes | |
+| `description` | string | No | Short description (defaults `""`). |
+| `image` | string | No | Image URL. |
+| `type` | string | No | e.g. `In-person`. |
+| `category` | string | No | Stored as event category / industry. |
+| `status` | string | No | Default `published`. |
+| `price` | number | No | Default `0`. |
+| `location` | string | No | |
+| `longDescription` | string | No | Defaults to `description`. |
+| `agenda` | string[] | No | Array of strings; stored as JSON. |
+| `attendeesHint` | number | No | Shown as “attending” hint. |
+| `swaapStream` | string | No | One of: `Swaap Connect`, `Swaap Grow`, `Swaap Business` (invalid values fall back to `Swaap Connect`). |
+| `hostUserId` | string | No | Firebase uid of host (enables guest–host threads for this event). |
+
+**Response** `201`: `{ "event": <EventDetail> }` with new `id` like `evt-<uuid>`.  
+
+**Errors:** `400` (missing `title` or date/time fields).
+
+**Example:**
+
+```bash
+curl -s -X POST https://YOUR_API/api/admin/events \
+  -H "Authorization: Bearer ADMIN_ID_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title":"Meetup",
+    "description":"Short text",
+    "startDate":"2026-07-01",
+    "startTime":"17:00",
+    "endDate":"2026-07-01",
+    "endTime":"19:00",
+    "price":50,
+    "location":"Riyadh",
+    "swaapStream":"Swaap Grow",
+    "hostUserId":"HOST_FIREBASE_UID"
+  }'
+```
+
+---
+
+### Reference: response shapes
+
+#### Full profile (private / admin)
+
+Returned from `/api/users/me`, `/api/users/profile` (POST/PATCH), `/api/auth/verify` (when `userExists`), and each element of `/api/admin/users`.
+
+| Field | Type |
+|-------|------|
+| `id` | string (Firebase uid) |
+| `phone` | string |
+| `email` | string |
+| `name` | string |
+| `interest` | string |
+| `professionArea` | string |
+| `title` | string |
+| `linkedinUrl` | string |
+| `hearAbout` | string |
+| `userType` | `"User"` \| `"Admin"` |
+| `jobRole`, `companyName`, `industry`, `lookingFor`, `canOffer` | string |
+| `businessOwner` | boolean |
+| `businessWebsite`, `socialInstagram`, `socialFacebook`, `socialLinkedin`, `socialSnapchat`, `socialTiktok` | string |
+| `createdAt` | string (ISO-ish sqlite datetime) |
+
+#### Public profile (directory / shared links)
+
+Used in `/api/users/directory` and `/api/users/:userId/public`. **Omits** `phone`, `email`, `userType`, `hearAbout`, `createdAt`. Includes `id`, `name`, `interest`, professional fields, social URLs, `businessOwner`, etc.
+
+#### Event object
+
+List responses use the fields shown under `GET /api/events`. **Detail** (`GET /api/events/:id`, create event response) also includes `longDescription` (string) and `agenda` (string array).
+
+#### Allowed interest values
+
+Exact strings in `src/data/dummy-events.js` (`ALLOWED_INTERESTS`), for example: `Startups`, `Business Growth`, `Fundraising`, `Marketing`, `Strategy`, `Sales`, `Innovation`, `AI in Business`, `Digital Transformation`, `Emerging Technologies`, `Public Speaking`, `Networking`, `Mentorship`, `Leadership Development`, `Partnerships`, `Collaboration`.
+
+#### Swaap stream values (events)
+
+`Swaap Connect`, `Swaap Grow`, `Swaap Business` (`SWAAP_STREAMS` in `src/data/dummy-events.js`).
+
+---
 
 ## Deploy to GitHub
 
