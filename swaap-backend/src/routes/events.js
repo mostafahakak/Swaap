@@ -1,10 +1,10 @@
 import { Router } from "express";
 import {
-  listEvents,
-  getEventById,
+  getPublicEventById,
   getUserById,
   createEventReservation,
   getReservationStatus,
+  listPublicEvents,
 } from "../db.js";
 import { requireAuth } from "../middleware/require-auth.js";
 import { verifyIdToken } from "../firebase-admin.js";
@@ -37,7 +37,7 @@ eventsRouter.get("/", async (req, res, next) => {
       }
     }
 
-    const list = listEvents().map((e) => {
+    const list = listPublicEvents().map((e) => {
       const st = uid ? getReservationStatus(uid, e.id) : null;
       return attachRegistration(e, st);
     });
@@ -53,7 +53,7 @@ eventsRouter.get("/", async (req, res, next) => {
  */
 eventsRouter.get("/:id", async (req, res, next) => {
   try {
-    const event = getEventById(req.params.id);
+    const event = getPublicEventById(req.params.id);
     if (!event) {
       return res.status(404).json({ error: "Event not found" });
     }
@@ -80,7 +80,7 @@ eventsRouter.get("/:id", async (req, res, next) => {
  * POST /api/events/:id/reserve
  */
 eventsRouter.post("/:id/reserve", requireAuth, (req, res) => {
-  const event = getEventById(req.params.id);
+  const event = getPublicEventById(req.params.id);
   if (!event) {
     return res.status(404).json({ error: "Event not found" });
   }

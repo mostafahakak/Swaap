@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth.js";
 import { usersRouter } from "./routes/users.js";
 import { eventsRouter } from "./routes/events.js";
 import { adminRouter } from "./routes/admin.js";
+import { contactRouter } from "./routes/contact.js";
 import { seedEventsIfEmpty } from "./db.js";
 
 initFirebaseAdmin();
@@ -31,7 +32,7 @@ const origins = [...new Set([...defaultOrigins, ...fromEnv])];
 app.use(
   cors({
     origin: origins,
-    methods: ["GET", "POST", "PATCH", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 204,
   })
@@ -45,6 +46,7 @@ app.get("/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api/contact", contactRouter);
 app.use("/api/admin", adminRouter);
 
 app.use((err, _req, res, _next) => {

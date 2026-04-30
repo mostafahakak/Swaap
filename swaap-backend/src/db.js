@@ -73,6 +73,17 @@ db.exec(`
 
   CREATE UNIQUE INDEX IF NOT EXISTS idx_event_reservations_user_event
     ON event_reservations (user_id, event_id);
+
+  CREATE TABLE IF NOT EXISTS contact_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_contact_submissions_created_at
+    ON contact_submissions (created_at);
 `);
 
 const alters = [
@@ -103,6 +114,7 @@ for (const sql of alters) {
 const eventColumnAlters = [
   "ALTER TABLE events ADD COLUMN swaap_stream TEXT NOT NULL DEFAULT 'Swaap Connect'",
   "ALTER TABLE events ADD COLUMN host_user_id TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE events ADD COLUMN admin_created INTEGER NOT NULL DEFAULT 0",
 ];
 for (const sql of eventColumnAlters) {
   try {
@@ -111,6 +123,15 @@ for (const sql of eventColumnAlters) {
     const msg = String(e?.message || e);
     if (!msg.includes("duplicate column")) throw e;
   }
+}
+
+const seedEventIds = dummyEvents.map((e) => `'${e.id.replace(/'/g, "''")}'`).join(",");
+try {
+  db.exec(
+    `UPDATE events SET admin_created = 1 WHERE id NOT IN (${seedEventIds})`
+  );
+} catch {
+  /* ignore */
 }
 
 function mapUser(row) {
@@ -365,8 +386,27 @@ export function listEvents() {
   return rows.map((r) => mapEventRow(r));
 }
 
+/** Published events created via admin API (excludes seeded demo rows). */
+export function listPublicEvents() {
+  const rows = db
+    .prepare(
+      `SELECT * FROM events WHERE admin_created = 1 AND status = 'published' ORDER BY start_date, start_time`
+    )
+    .all();
+  return rows.map((r) => mapEventRow(r));
+}
+
 export function getEventById(id) {
   const row = db.prepare("SELECT * FROM events WHERE id = ?").get(id);
+  return row ? mapEventRow(row, { includeDetail: true }) : null;
+}
+
+export function getPublicEventById(id) {
+  const row = db
+    .prepare(
+      `SELECT * FROM events WHERE id = ? AND admin_created = 1 AND status = 'published'`
+    )
+    .get(id);
   return row ? mapEventRow(row, { includeDetail: true }) : null;
 }
 
@@ -375,15 +415,44 @@ export function createEvent(row) {
     INSERT INTO events (
       id, title, description, image, type, category,
       start_date, start_time, end_date, end_time, status, price, location,
-      long_description, agenda_json, attendees_hint, swaap_stream, host_user_id
+      long_description, agenda_json, attendees_hint, swaap_stream, host_user_id, admin_created
     ) VALUES (
       @id, @title, @description, @image, @type, @category,
       @start_date, @start_time, @end_date, @end_time, @status, @price, @location,
-      @long_description, @agenda_json, @attendees_hint, @swaap_stream, @host_user_id
+      @long_description, @agenda_json, @attendees_hint, @swaap_stream, @host_user_id, @admin_created
     )
   `);
   stmt.run(row);
   return getEventById(row.id);
+}
+
+/** Update an existing event row (all columns except id and admin_created). */
+export function updateEventRow(eventId, row) {
+  const cur = db.prepare("SELECT id FROM events WHERE id = ?").get(eventId);
+  if (!cur) return null;
+  db.prepare(
+    `UPDATE events SET
+      title=@title, description=@description, image=@image, type=@type, category=@category,
+      start_date=@start_date, start_time=@start_time, end_date=@end_date, end_time=@end_time,
+      status=@status, price=@price, location=@location, long_description=@long_description,
+      agenda_json=@agenda_json, attendees_hint=@attendees_hint, swaap_stream=@swaap_stream,
+      host_user_id=@host_user_id
+    WHERE id=@id`
+  ).run({ ...row, id: eventId });
+  return getEventById(eventId);
+}
+
+/** Remove event and dependent sign-up rows (reservations + legacy registrations). */
+export function deleteEventById(eventId) {
+  const found = db.prepare("SELECT id FROM events WHERE id = ?").get(eventId);
+  if (!found) return false;
+  const run = db.transaction(() => {
+    db.prepare("DELETE FROM event_reservations WHERE event_id = ?").run(eventId);
+    db.prepare("DELETE FROM event_registrations WHERE event_id = ?").run(eventId);
+    db.prepare("DELETE FROM events WHERE id = ?").run(eventId);
+  });
+  run();
+  return true;
 }
 
 function getReservationRow(userId, eventId) {
@@ -488,6 +557,30 @@ export function listAllUsers() {
   return rows.map((r) => mapUser(r));
 }
 
+export function createContactSubmission({ name, email, message }) {
+  const info = db
+    .prepare(`INSERT INTO contact_submissions (name, email, message) VALUES (?, ?, ?)`)
+    .run(name, email, message);
+  const row = db.prepare(`SELECT * FROM contact_submissions WHERE id = ?`).get(info.lastInsertRowid);
+  return row
+    ? { id: row.id, name: row.name, email: row.email, message: row.message, createdAt: row.created_at }
+    : null;
+}
+
+/** Newest first (for admin inbox). */
+export function listContactSubmissions() {
+  const rows = db
+    .prepare(`SELECT * FROM contact_submissions ORDER BY datetime(created_at) DESC, id DESC`)
+    .all();
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    message: row.message,
+    createdAt: row.created_at,
+  }));
+}
+
 export function seedEventsIfEmpty() {
   const n = db.prepare("SELECT COUNT(*) as c FROM events").get().c;
   if (n > 0) return;
@@ -495,11 +588,11 @@ export function seedEventsIfEmpty() {
     INSERT INTO events (
       id, title, description, image, type, category,
       start_date, start_time, end_date, end_time, status, price, location,
-      long_description, agenda_json, attendees_hint, swaap_stream, host_user_id
+      long_description, agenda_json, attendees_hint, swaap_stream, host_user_id, admin_created
     ) VALUES (
       @id, @title, @description, @image, @type, @category,
       @start_date, @start_time, @end_date, @end_time, @status, @price, @location,
-      @long_description, @agenda_json, @attendees_hint, @swaap_stream, @host_user_id
+      @long_description, @agenda_json, @attendees_hint, @swaap_stream, @host_user_id, @admin_created
     )
   `);
   for (const e of dummyEvents) {
@@ -522,6 +615,7 @@ export function seedEventsIfEmpty() {
       attendees_hint: e.attendees ?? 0,
       swaap_stream: e.swaapStream ?? "Swaap Connect",
       host_user_id: e.hostUserId != null ? String(e.hostUserId).trim() : "",
+      admin_created: 0,
     });
   }
 }
