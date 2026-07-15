@@ -1,5 +1,5 @@
-/** Swaap programme streams — used for filtering and event labels */
-export const SWAAP_STREAMS = ["Swaap Connect", "Swaap Grow", "Swaap Business"];
+/** Re-export streams + interests from registration options (single source of truth). */
+export { SWAAP_STREAMS, ALLOWED_INTERESTS } from "./registration-options.js";
 
 /** Dummy events served by GET /api/events and GET /api/events/:id */
 export const dummyEvents = [
@@ -93,23 +93,4 @@ export const dummyEvents = [
     coverImage: "/placeholder-event-5",
     agenda: ["Track kickoffs", "Cross-discipline pairs", "Retro"],
   },
-];
-
-export const ALLOWED_INTERESTS = [
-  "Startups",
-  "Business Growth",
-  "Fundraising",
-  "Marketing",
-  "Strategy",
-  "Sales",
-  "Innovation",
-  "AI in Business",
-  "Digital Transformation",
-  "Emerging Technologies",
-  "Public Speaking",
-  "Networking",
-  "Mentorship",
-  "Leadership Development",
-  "Partnerships",
-  "Collaboration",
 ];

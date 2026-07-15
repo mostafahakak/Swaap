@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dummyEvents } from "./data/dummy-events.js";
+import { decodeMultiSelect } from "./data/registration-options.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = (() => {
@@ -101,6 +102,14 @@ const alters = [
   "ALTER TABLE users ADD COLUMN social_linkedin TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE users ADD COLUMN social_snapchat TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE users ADD COLUMN social_tiktok TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN describes_you TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN current_stage TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN experience_attend TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN topics_json TEXT NOT NULL DEFAULT '[]'",
+  "ALTER TABLE users ADD COLUMN connect_areas_json TEXT NOT NULL DEFAULT '[]'",
+  "ALTER TABLE users ADD COLUMN open_to_team_meeting INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN open_to_matchmaking INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN agree_networking INTEGER NOT NULL DEFAULT 0",
 ];
 for (const sql of alters) {
   try {
@@ -150,8 +159,16 @@ function mapUser(row) {
     jobRole: row.job_role ?? "",
     companyName: row.company_name ?? "",
     industry: row.industry ?? "",
-    lookingFor: row.looking_for ?? "",
-    canOffer: row.can_offer ?? "",
+    lookingFor: decodeMultiSelect(row.looking_for),
+    canOffer: decodeMultiSelect(row.can_offer),
+    topics: decodeMultiSelect(row.topics_json),
+    connectAreas: decodeMultiSelect(row.connect_areas_json),
+    describesYou: row.describes_you ?? "",
+    currentStage: row.current_stage ?? "",
+    experienceAttend: row.experience_attend ?? "",
+    openToTeamMeeting: Boolean(row.open_to_team_meeting),
+    openToMatchmaking: Boolean(row.open_to_matchmaking),
+    agreeNetworking: Boolean(row.agree_networking),
     businessOwner: Boolean(row.business_owner),
     businessWebsite: row.business_website ?? "",
     socialInstagram: row.social_instagram ?? "",
@@ -219,8 +236,13 @@ function mapPublicUser(row) {
     jobRole: row.job_role ?? "",
     companyName: row.company_name ?? "",
     industry: row.industry ?? "",
-    lookingFor: row.looking_for ?? "",
-    canOffer: row.can_offer ?? "",
+    lookingFor: decodeMultiSelect(row.looking_for),
+    canOffer: decodeMultiSelect(row.can_offer),
+    topics: decodeMultiSelect(row.topics_json),
+    connectAreas: decodeMultiSelect(row.connect_areas_json),
+    describesYou: row.describes_you ?? "",
+    currentStage: row.current_stage ?? "",
+    experienceAttend: row.experience_attend ?? "",
     businessOwner: Boolean(row.business_owner),
     businessWebsite: row.business_website ?? "",
     socialInstagram: row.social_instagram ?? "",
@@ -294,13 +316,17 @@ export function createUser(row) {
       id, phone, email, name, interest, profession_area, title, linkedin_url, hear_about,
       user_type, job_role, company_name, industry, looking_for, can_offer,
       business_owner, business_website, social_instagram, social_facebook, social_linkedin,
-      social_snapchat, social_tiktok
+      social_snapchat, social_tiktok,
+      describes_you, current_stage, experience_attend, topics_json, connect_areas_json,
+      open_to_team_meeting, open_to_matchmaking, agree_networking
     )
     VALUES (
       @id, @phone, @email, @name, @interest, @profession_area, @title, @linkedin_url, @hear_about,
       @user_type, @job_role, @company_name, @industry, @looking_for, @can_offer,
       @business_owner, @business_website, @social_instagram, @social_facebook, @social_linkedin,
-      @social_snapchat, @social_tiktok
+      @social_snapchat, @social_tiktok,
+      @describes_you, @current_stage, @experience_attend, @topics_json, @connect_areas_json,
+      @open_to_team_meeting, @open_to_matchmaking, @agree_networking
     )
   `);
   stmt.run({
@@ -317,8 +343,8 @@ export function createUser(row) {
     job_role: row.job_role ?? "",
     company_name: row.company_name ?? "",
     industry: row.industry ?? "",
-    looking_for: row.looking_for ?? "",
-    can_offer: row.can_offer ?? "",
+    looking_for: row.looking_for ?? "[]",
+    can_offer: row.can_offer ?? "[]",
     business_owner: row.business_owner ? 1 : 0,
     business_website: row.business_website ?? "",
     social_instagram: row.social_instagram ?? "",
@@ -326,8 +352,27 @@ export function createUser(row) {
     social_linkedin: row.social_linkedin ?? "",
     social_snapchat: row.social_snapchat ?? "",
     social_tiktok: row.social_tiktok ?? "",
+    describes_you: row.describes_you ?? "",
+    current_stage: row.current_stage ?? "",
+    experience_attend: row.experience_attend ?? "",
+    topics_json: row.topics_json ?? "[]",
+    connect_areas_json: row.connect_areas_json ?? "[]",
+    open_to_team_meeting: row.open_to_team_meeting ? 1 : 0,
+    open_to_matchmaking: row.open_to_matchmaking ? 1 : 0,
+    agree_networking: row.agree_networking ? 1 : 0,
   });
   return getUserById(row.id);
+}
+
+function encodeListField(value, fallbackStored) {
+  if (value == null) return fallbackStored;
+  if (Array.isArray(value)) return JSON.stringify(value);
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t.startsWith("[")) return t;
+    return JSON.stringify(t ? [t] : []);
+  }
+  return fallbackStored;
 }
 
 export function updateUserProfile(userId, patch) {
@@ -346,8 +391,32 @@ export function updateUserProfile(userId, patch) {
     job_role: patch.jobRole != null ? String(patch.jobRole).trim() : cur.job_role,
     company_name: patch.companyName != null ? String(patch.companyName).trim() : cur.company_name,
     industry: patch.industry != null ? String(patch.industry).trim() : cur.industry,
-    looking_for: patch.lookingFor != null ? String(patch.lookingFor).trim() : cur.looking_for,
-    can_offer: patch.canOffer != null ? String(patch.canOffer).trim() : cur.can_offer,
+    looking_for: encodeListField(patch.lookingFor, cur.looking_for),
+    can_offer: encodeListField(patch.canOffer, cur.can_offer),
+    topics_json: encodeListField(patch.topics, cur.topics_json ?? "[]"),
+    connect_areas_json: encodeListField(patch.connectAreas, cur.connect_areas_json ?? "[]"),
+    describes_you:
+      patch.describesYou != null ? String(patch.describesYou).trim() : cur.describes_you ?? "",
+    current_stage:
+      patch.currentStage != null ? String(patch.currentStage).trim() : cur.current_stage ?? "",
+    experience_attend:
+      patch.experienceAttend != null
+        ? String(patch.experienceAttend).trim()
+        : cur.experience_attend ?? "",
+    open_to_team_meeting:
+      patch.openToTeamMeeting != null
+        ? patch.openToTeamMeeting
+          ? 1
+          : 0
+        : cur.open_to_team_meeting ?? 0,
+    open_to_matchmaking:
+      patch.openToMatchmaking != null
+        ? patch.openToMatchmaking
+          ? 1
+          : 0
+        : cur.open_to_matchmaking ?? 0,
+    agree_networking:
+      patch.agreeNetworking != null ? (patch.agreeNetworking ? 1 : 0) : cur.agree_networking ?? 0,
     business_owner:
       patch.businessOwner != null ? (patch.businessOwner ? 1 : 0) : cur.business_owner,
     business_website:
@@ -364,13 +433,17 @@ export function updateUserProfile(userId, patch) {
   };
   db.prepare(
     `UPDATE users SET
- email=@email, name=@name, interest=@interest, profession_area=@profession_area,
+      email=@email, name=@name, interest=@interest, profession_area=@profession_area,
       title=@title, linkedin_url=@linkedin_url, hear_about=@hear_about,
       job_role=@job_role, company_name=@company_name, industry=@industry,
       looking_for=@looking_for, can_offer=@can_offer, business_owner=@business_owner,
       business_website=@business_website, social_instagram=@social_instagram,
       social_facebook=@social_facebook, social_linkedin=@social_linkedin,
-      social_snapchat=@social_snapchat, social_tiktok=@social_tiktok
+      social_snapchat=@social_snapchat, social_tiktok=@social_tiktok,
+      describes_you=@describes_you, current_stage=@current_stage, experience_attend=@experience_attend,
+      topics_json=@topics_json, connect_areas_json=@connect_areas_json,
+      open_to_team_meeting=@open_to_team_meeting, open_to_matchmaking=@open_to_matchmaking,
+      agree_networking=@agree_networking
     WHERE id=@id`
   ).run({ ...next, id: userId });
   return getUserById(userId);
